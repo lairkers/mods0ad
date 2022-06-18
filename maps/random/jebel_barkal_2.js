@@ -94,6 +94,7 @@ const oKushChampions = [
 	"units/kush/champion_infantry_apedemak"
 ];
 const oPtolSiege = ["units/ptol/siege_lithobolos_unpacked", "units/ptol/siege_polybolos_unpacked"];
+const oPtolSiegeWall = ["units/ptol/siege_lithobolos_unpacked", "units/ptol/siege_polybolos_unpacked", "units/ptol/siege_polybolos_unpacked", "units/ptol/siege_polybolos_unpacked"];
 const oTriggerPointCityPath = "trigger/trigger_point_A";
 const oTriggerPointAttackerPatrol = "trigger/trigger_point_B";
 
@@ -1383,7 +1384,7 @@ createObjectGroupsByAreas(
 	
 g_Map.log("Placing siege engines around the city wall");                                                                /* Added range sieges at wall here */
 createObjectGroupsByAreas(
-	new SimpleGroup([new RandomObject(oPtolSiege, 1, 1, 1, 3)], true, clSoldier),
+	new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 3)], true, clSoldier),
 	0,
 	new StaticConstraint([]),
 	scaleByMapSize(1, 6) * 6 * getDifficulty(),
