@@ -1118,7 +1118,7 @@ if (placeNapataWall)
 		undefined,
 		new StaticConstraint([
 			new NearTileClassConstraint(clWall, 2),
-			avoidClasses(clPath, 1, clRoad, 1, clWall, 1, clGate, 3, clTemple, 2, clHill, 6)
+			avoidClasses(clPath, 2, clRoad, 1, clWall, 1, clGate, 3, clTemple, 2, clHill, 6)
 		]));
 
 	g_Map.log("Placing wall palms");
@@ -1136,7 +1136,8 @@ if (placeNapataWall)
 		undefined,
 		new StaticConstraint([
 			new NearTileClassConstraint(clWall, 2),
-			avoidClasses(clWall, 1, clGate, 3, clHill, 6)                                                   /* \todo: Only place sieges _behind_ the wall */
+            stayClasses(),                                                                                         /* To be 'inside' the town */
+            avoidClasses(clWall, 1, clForest, 2, clGate, 3, clTemple, 2, clHill, 6)
 		]));
 }
 
@@ -1385,7 +1386,7 @@ createObjectGroupsByAreas(
 	new SimpleGroup([new RandomObject(oPtolSiege, 1, 1, 1, 3)], true, clSoldier),
 	0,
 	new StaticConstraint([]),
-	scaleByMapSize(1, 6) * 3 * getDifficulty(),
+	scaleByMapSize(1, 6) * 6 * getDifficulty(),
 	250,
 	[areaWallSiege]);
 

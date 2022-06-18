@@ -53,12 +53,12 @@ testlog: $(TEST_LOG)
 
 
 # Unreveal map (there was no autostart-uncover)
-view:
+view: $(MAP_ALL_FILES_INSTALLED)
 	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY)
 
 
 # Playing (and checking if map actually looks correct)
-play:
+play: $(MAP_ALL_FILES_INSTALLED)
 	$(0AD) $(0AD_FLAGS)
 
 
