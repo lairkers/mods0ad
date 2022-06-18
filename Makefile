@@ -14,7 +14,7 @@ include perssettings/$(USER).mk
 # Paths
 MAPS_ROOT := maps
 
-MAP_ALL_FILES := $(wildcard $(MAPS_ROOT)/$(MAP_TYPE)/$(MAP_NAME)*)
+MAP_ALL_FILES 			:= $(wildcard $(MAPS_ROOT)/$(MAP_TYPE)/$(MAP_NAME)*)
 MAP_ALL_FILES_INSTALLED := $(addprefix $(MAP_INSTALL_PATH)/$(MAP_TYPE)/,$(notdir $(MAP_ALL_FILES)))
 
 TEST_ROOT := _log
@@ -27,7 +27,7 @@ RELEASE_SERVER_ROOT := /www/maps0ad
 RELEASE_SERVER_MAPS := $(RELEASE_SERVER_ROOT)/maps
 
 # Flags
-0AD_FLAGS   := -autostart-size=256 -autostart-disable-replay
+0AD_FLAGS   := -autostart=$(MAP_TYPE)/$(MAP_NAME) -autostart-size=256 -autostart-disable-replay
 0AD_VICTORY := -autostart-player=2 -autostart-team=1:1 -autostart-team=2:1
 
 
@@ -45,18 +45,21 @@ install: $(MAP_ALL_FILES_INSTALLED)
 $(TEST_ROOT):
 	$(MKDIR) $@
 
-$(0AD_LOG): $(MAP_ALL_FILES_INSTALLED)
-	$(0AD) -autostart=$(MAP_TYPE)/$(MAP_NAME) $(0AD_FLAGS) $(0AD_VICTORY) -autostart-nonvisual -quickstart || true
+$(TEST_LOG): $(MAP_ALL_FILES_INSTALLED)
+	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY) -autostart-nonvisual -quickstart || true
+	$(CP) $(0AD_LOG) $@
 
-$(TEST_LOG): $(0AD_LOG) | $(TEST_ROOT)
-	$(CP) $< $@
+testlog: $(TEST_LOG)
 
-test: $(TEST_LOG)
+
+# Unreveal map (there was no autostart-uncover)
+view:
+	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY)
 
 
 # Playing (and checking if map actually looks correct)
 play:
-	$(0AD) -autostart=$(MAP_TYPE)/$(MAP_NAME) $(0AD_FLAGS)
+	$(0AD) $(0AD_FLAGS)
 
 
 # Upload to FTP server
