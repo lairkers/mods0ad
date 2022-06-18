@@ -177,7 +177,6 @@ var jebelBarkal_buildingGarrison = difficulty => [
 		"buildingClasses": ["ElephantStable"],
 		"unitTemplates": jebelBarkal_templates.elephants,
 		"capacityRatio": 1
-
 	},
 	{
 		"buildingClasses": ["Arsenal"],
@@ -198,11 +197,11 @@ var jebelBarkal_buildingGarrison = difficulty => [
 	},
 	{
 		"buildingClasses": ["WallTower"],
-		"unitTemplates": jebelBarkal_templates.champion_infantry_ranged,
-		"capacityRatio": difficulty > 3 ? 1 : 0
+		"unitTemplates": [...jebelBarkal_templates.citizenSoldier_infantry, ...jebelBarkal_templates.champion_infantry],
+		"capacityRatio": difficulty >= 3 ? 1 : 0
 	},
 	{
-		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],                                         /* \todo this is still broken */
+		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],                                                         /* \todo this is still broken */
 		"unitTemplates": difficulty > 3 ? jebelBarkal_templates.champion_infantry_ranged : jebelBarkal_templates.citizenSoldier_infantry_ranged,
 		"capacityRatio": (difficulty - 2) / 3
 	}

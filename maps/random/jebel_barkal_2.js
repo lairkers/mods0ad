@@ -898,10 +898,10 @@ if (placeNapataWall)
 	let wallGridRadiusFront = gridRadius(gridPointsY - 1) + pathWidth - 1;
 	let wallGridMaxAngleFront = gridMaxAngle + wallGridMaxAngleSummand;
 	let entitiesWalls = [];
-	for (let x = 0; x <= 4; x += 2)
+	for (let woffset = 0; woffset <= 4; woffset += 2)                                                                             /* Changed here for more front walls */
 	    entitiesWalls = entitiesWalls.concat(placeCircularWall(
 		    gridCenter,
-		    wallGridRadiusFront + x,
+		    wallGridRadiusFront + woffset,
 		    ["tower", "short", "tower", "gate", "tower", "medium", "tower", "short"],
 		    placeNapataWall,
 		    0,
@@ -913,20 +913,22 @@ if (placeNapataWall)
 
 	g_Map.log("Placing side and back walls");
 	let wallGridRadiusBack = hillRadius - scaleByMapSize(15, 25);
-	let wallGridMaxAngleBack = gridMaxAngle + wallGridMaxAngleSummand;
-	let wallGridPositionFront = distributePointsOnCircularSegment(gridPointsX, wallGridMaxAngleBack, wallGridStartAngle, wallGridRadiusFront, gridCenter)[0];
-	let wallGridPositionBack = distributePointsOnCircularSegment(gridPointsX, wallGridMaxAngleBack, wallGridStartAngle, wallGridRadiusBack, gridCenter)[0];
-	let wallGridPosition = [wallGridPositionFront[0], ...wallGridPositionBack, wallGridPositionFront[wallGridPositionFront.length - 1]];
-	for (let x = 1; x < wallGridPosition.length; ++x)
-		entitiesWalls = entitiesWalls.concat(
-			placeLinearWall(
-				wallGridPosition[x - 1],
-				wallGridPosition[x],
-				["tower", "gate", "tower", "short", "tower", "short", "tower"],
-				placeNapataWall,
-				0,
-				false,
-				avoidClasses(clHill, 0, clTemple, 0)));
+	for (let woffset = 0; woffset <= 4; woffset += 2) {                                                                           /* Changed here for more side and back walls */
+        let wallGridMaxAngleBack = gridMaxAngle + wallGridMaxAngleSummand + woffset / 50;
+        let wallGridPositionFront = distributePointsOnCircularSegment(gridPointsX, wallGridMaxAngleBack, wallGridStartAngle - woffset / 100, wallGridRadiusFront, gridCenter)[0];
+        let wallGridPositionBack = distributePointsOnCircularSegment(gridPointsX, wallGridMaxAngleBack, wallGridStartAngle - woffset / 100, wallGridRadiusBack, gridCenter)[0];
+        let wallGridPosition = [wallGridPositionFront[0], ...wallGridPositionBack, wallGridPositionFront[wallGridPositionFront.length - 1]];
+        for (let x = 1; x < wallGridPosition.length; ++x)
+            entitiesWalls = entitiesWalls.concat(
+                placeLinearWall(
+                    wallGridPosition[x - 1],
+                    wallGridPosition[x],
+                    ["tower", "gate", "tower", "short", "tower", "short", "tower"],
+                    placeNapataWall,
+                    0,
+                    false,
+                    avoidClasses(clHill, 0, clTemple, 0)));
+    };
 
 	g_Map.log("Marking walls");
 	createArea(
@@ -1382,7 +1384,7 @@ createObjectGroupsByAreas(
 	250,
 	[areaHilltop]);
 	
-g_Map.log("Placing siege engines around the city wall");                                                                /* Added range sieges at wall here */
+g_Map.log("Placing siege engines around the city wall");                                                                /* Added ranged sieges at wall here */
 createObjectGroupsByAreas(
 	new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 3)], true, clSoldier),
 	0,
