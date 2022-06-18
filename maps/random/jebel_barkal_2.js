@@ -78,6 +78,7 @@ const oCivicCenter = "structures/kush/civil_centre";
 const oBarracks = "structures/kush/barracks";
 const oStable = "structures/kush/stable";
 const oElephantStable = "structures/kush/elephant_stable";
+const oArsenal = "structures/kush/arsenal";
 const oWallMedium = "structures/kush/wall_medium";
 const oWallGate = "structures/kush/wall_gate";
 const oWallTower = "structures/kush/wall_tower";
@@ -184,6 +185,7 @@ const clHouse = g_Map.createTileClass();
 const clForge = g_Map.createTileClass();
 const clStable = g_Map.createTileClass();
 const clElephantStable = g_Map.createTileClass();
+const clArsenal = g_Map.createTileClass();                                                                      /* Added arsenal and siege creation, spread over the file */
 const clCivicCenter = g_Map.createTileClass();
 const clBarracks = g_Map.createTileClass();
 const clBlemmyeCamp = g_Map.createTileClass();
@@ -276,6 +278,12 @@ const layoutKushCity = [
 		"painters": new TileClassPainter(clElephantStable)
 	},
 	{
+		"templateName": oArsenal,
+		"difficulty": "Medium",
+		"constraints": avoidClasses(clArsenal, 10),
+		"painters": new TileClassPainter(clArsenal)
+	},
+	{
 		"templateName": oStable,
 		"difficulty": "Easy",
 		"constraints": avoidClasses(clStable, 20),
@@ -344,7 +352,7 @@ createArea(
 		translateHeightmap(
 			new Vector2D(-12, scaleByMapSize(-12, -25)),
 			undefined,
-			convertHeightmap1Dto2D(Engine.LoadMapTerrain("maps/random/jebel_barkal.pmp").height)),
+			convertHeightmap1Dto2D(Engine.LoadMapTerrain("maps/random/jebel_barkal_2.pmp").height)),
 		minHeightSource,
 		maxHeightSource));
 
@@ -594,7 +602,7 @@ for (let i = 0; i < numPlayers; ++i)
 			"outerTerrain": isDesert ? tRoadDesert : tRoadFertileLand,
 			"innerTerrain": isDesert ? tRoadDesert : tRoadFertileLand
 		},
-		"StartingAnimal": {
+		"Chicken": {
 			"template": oGazelle,
 			"distance": 15,
 			"minGroupDistance": 2,
@@ -888,17 +896,19 @@ if (placeNapataWall)
 	let wallGridStartAngle = gridStartAngle - wallGridMaxAngleSummand / 2;
 	let wallGridRadiusFront = gridRadius(gridPointsY - 1) + pathWidth - 1;
 	let wallGridMaxAngleFront = gridMaxAngle + wallGridMaxAngleSummand;
-	let entitiesWalls = placeCircularWall(
-		gridCenter,
-		wallGridRadiusFront,
-		["tower", "short", "tower", "gate", "tower", "medium", "tower", "short"],
-		placeNapataWall,
-		0,
-		wallGridStartAngle,
-		wallGridMaxAngleFront,
-		true,
-		0,
-		0);
+	let entitiesWalls = [];
+	for (let x = 0; x <= 4; x += 2)
+	    entitiesWalls = entitiesWalls.concat(placeCircularWall(
+		    gridCenter,
+		    wallGridRadiusFront + x,
+		    ["tower", "short", "tower", "gate", "tower", "medium", "tower", "short"],
+		    placeNapataWall,
+		    0,
+		    wallGridStartAngle,
+		    wallGridMaxAngleFront,
+		    true,
+		    0,
+		    0));
 
 	g_Map.log("Placing side and back walls");
 	let wallGridRadiusBack = hillRadius - scaleByMapSize(15, 25);
@@ -1063,6 +1073,7 @@ var areaCityBushes =
 				clHouse, 1,
 				clForge, 1,
 				clElephantStable, 1,
+				clArsenal, 1,
 				clStable, 1,
 				clCivicCenter, 1,
 				clBarracks, 1,
@@ -1078,7 +1089,7 @@ var areaCityPalms =
 		undefined,
 		[
 			new StayAreasConstraint([areaCityBushes]),
-			avoidClasses(clElephantStable, 3)
+			avoidClasses(clElephantStable, 3, clArsenal, 3)
 		]);
 
 g_Map.log("Placing city palms");
@@ -1100,7 +1111,7 @@ createObjectGroupsByAreas(
 	[areaCityBushes]);
 
 if (placeNapataWall)
-{
+{		
 	g_Map.log("Marking wall palm area");
 	var areaWallPalms = createArea(
 		new MapBoundsPlacer(),
@@ -1118,6 +1129,15 @@ if (placeNapataWall)
 		scaleByMapSize(40, 250),
 		50,
 		[areaWallPalms]);
+	
+	g_Map.log("Marking wall siege area");
+	var areaWallSiege = createArea(
+		new MapBoundsPlacer(),
+		undefined,
+		new StaticConstraint([
+			new NearTileClassConstraint(clWall, 2),
+			avoidClasses(clWall, 1, clGate, 3, clHill, 6)                                                   /* \todo: Only place sieges _behind_ the wall */
+		]));
 }
 
 createBumps(
@@ -1359,6 +1379,15 @@ createObjectGroupsByAreas(
 	scaleByMapSize(1, 6) / 3 * getDifficulty(),
 	250,
 	[areaHilltop]);
+	
+g_Map.log("Placing siege engines around the city wall");                                                                /* Added range sieges at wall here */
+createObjectGroupsByAreas(
+	new SimpleGroup([new RandomObject(oPtolSiege, 1, 1, 1, 3)], true, clSoldier),
+	0,
+	new StaticConstraint([]),
+	scaleByMapSize(1, 6) * 3 * getDifficulty(),
+	250,
+	[areaWallSiege]);
 
 const avoidCollisionsPyramids = new StaticConstraint([avoidCollisions, new NearTileClassConstraint(clPyramid, 10)]);
 if (!isNomad())

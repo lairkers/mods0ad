@@ -31,6 +31,7 @@ var jebelBarkal_templateClasses = deepfreeze({
 	"heroes": "Hero",
 	"champions": "Champion+!Elephant",
 	"elephants": "Champion+Elephant",
+	"siege_ram": "Siege+Ram",
 	"champion_infantry": "Champion+Infantry",
 	"champion_infantry_melee": "Champion+Infantry+Melee",
 	"champion_infantry_ranged": "Champion+Infantry+Ranged",
@@ -106,7 +107,7 @@ var jebelBarkal_cityPatrolGroup_balancing = {
  * Frequently the buildings spawn different units that attack the players groupwise.
  * Leave more time between the attacks in later stages of the game since the attackers become much stronger over time.
  */
-var jebelBarkal_attackInterval = (time, difficulty) => randFloat(5, 7) + time / difficulty / 10;
+var jebelBarkal_attackInterval = (time, difficulty) => randFloat(5, 7) + time / difficulty / 10;            /* Changed here for quicker attacks */
 
 /**
  * Prevent city patrols chasing the starting units in nomad mode.
@@ -126,7 +127,7 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
  * Account for varying mapsizes and number of players when spawning attackers.
  */
 var jebelBarkal_attackerGroup_sizeFactor = (numPlayers, numInitialSpawnPoints, difficulty) =>
-	numPlayers / numInitialSpawnPoints * difficulty * 0.85;
+	numPlayers / numInitialSpawnPoints * (difficulty + 2) * 0.85;                                           /* Change here for bigger attack groups */
 
 /**
  * Assume gaia to be the native kushite player.
@@ -179,6 +180,12 @@ var jebelBarkal_buildingGarrison = difficulty => [
 
 	},
 	{
+		"buildingClasses": ["Arsenal"],
+		"unitTemplates": jebelBarkal_templates.siege_ram,
+		"capacityRatio": 1
+
+	},
+	{
 		"buildingClasses": ["Stable"],
 		"unitTemplates": jebelBarkal_templates.champion_cavalry,
 		"capacityRatio": 1
@@ -188,15 +195,14 @@ var jebelBarkal_buildingGarrison = difficulty => [
 		"buildingClasses": ["House"],
 		"unitTemplates": [...jebelBarkal_templates.females, ...jebelBarkal_templates.healers],
 		"capacityRatio": 0.5
-
 	},
 	{
-		"buildingClasses": ["StoneWall+Tower"],
+		"buildingClasses": ["WallTower"],
 		"unitTemplates": jebelBarkal_templates.champion_infantry_ranged,
 		"capacityRatio": difficulty > 3 ? 1 : 0
 	},
 	{
-		"buildingClasses": ["StoneWall+!Tower"],
+		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],                                         /* \todo this is still broken */
 		"unitTemplates": difficulty > 3 ? jebelBarkal_templates.champion_infantry_ranged : jebelBarkal_templates.citizenSoldier_infantry_ranged,
 		"capacityRatio": (difficulty - 2) / 3
 	}
@@ -345,6 +351,18 @@ var jebelBarkal_attackerGroup_balancing = [
 		"unitComposition": (time, heroes) => [
 			{
 				"templates": jebelBarkal_templates.elephants,
+				"frequency": 1
+			}
+		],
+		"formations": [],
+		"targetClasses": () => pickRandom(["Defensive SiegeEngine Monument Wonder", "Structure"])
+	},
+	{
+		"buildingClasses": ["Arsenal"],
+		"unitCount": time => scaleByTime(time, 1, 14),
+		"unitComposition": (time, heroes) => [
+			{
+				"templates": jebelBarkal_templates.siege_ram,
 				"frequency": 1
 			}
 		],
