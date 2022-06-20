@@ -21,7 +21,7 @@ TEST_LOG  := $(TEST_ROOT)/log.html
 
 TOOLS_ROOT   := tools
 PUSH2FTP     := $(TOOLS_ROOT)/pushToFtp.py
-UPDATER_WIN  := # $(TOOLS_ROOT)/updater.bat
+UPDATER_WIN  := $(TOOLS_ROOT)/updater.bat
 UPDATER_UNIX := $(TOOLS_ROOT)/updater.sh
 
 RELEASE_SERVER_FTP  := elgee.bplaced.net
