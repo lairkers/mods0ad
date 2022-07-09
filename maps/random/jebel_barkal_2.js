@@ -589,6 +589,44 @@ const areaHilltop = createArea(
 
 Engine.SetProgress(50);
 
+
+function placePlayerBaseStartingAnimal(args)
+{
+	for (let i = 0; i < args.groupCount; ++i)
+	{
+		let success = false;
+		for (let tries = 0; tries < 30; ++tries)
+		{
+			let position = new Vector2D(0, args.distance).rotate(randomAngle()).add(args.basePosition);
+			if (createObjectGroup(
+				new SimpleGroup(
+					[
+						new SimpleObject(
+							args.template,
+                            args.minGroupCount,
+                            args.maxGroupCount,
+							args.minGroupDistance,
+							args.maxGroupDistance)
+					],
+					true,
+					args.BaseResourceClass,
+					position),
+				0,
+				args.baseResourceConstraint))
+			{
+				success = true;
+				break;
+			}
+		}
+
+		if (!success)
+		{
+			error("Could not place startingAnimal for player " + args.playerID);
+			return;
+		}
+	}
+}
+
 for (let i = 0; i < numPlayers; ++i)
 {
 	let isDesert = clDesert.has(playerPosition[i]);
@@ -645,6 +683,20 @@ for (let i = 0; i < numPlayers; ++i)
 			"template": isDesert ? aRock : pickRandom(aBushesFertileLand)
 		}
 	});
+    
+    placePlayerBaseStartingAnimal({                                                         /* Place additional Elephants for breakfast (early game) */
+            "basePosition": playerPosition[i],
+            "BaseResourceClass": clBaseResource,
+            "baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),
+            "template": oElephant,
+            "groupCount" : pickRandom([1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 4]),
+            "distance": 5,
+            "minGroupDistance": 3,
+            "maxGroupDistance": 6,
+            "minGroupCount": 1,
+            "maxGroupCount": 1
+        }
+    );
 }
 
 g_Map.log("Placing pyramids");
@@ -966,7 +1018,7 @@ if (placeNapataWall)
 				new NearTileClassConstraint(clPath, pathWidth + 1)
 			]);
 }
-Engine.SetProgress(70);
+Engine.SetProgress(72);
 
 g_Map.log("Finding road starting points");
 var roadStartLocations = shuffleArray(
@@ -1304,7 +1356,7 @@ createObjectGroupsByAreas(
 	new SimpleGroup([new SimpleObject(oElephant, 2, 3, 2, 4), new SimpleObject(oElephantInfant, 2, 3, 2, 4)], true, clFood),
 	0,
 	avoidCollisions,
-	scaleByMapSize(2, 10),
+	scaleByMapSize(4, 20),                                                                                      /* Doubled number of elephants for XXL lunch */
 	50,
 	[areaDesert]);
 
