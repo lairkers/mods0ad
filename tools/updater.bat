@@ -1,19 +1,18 @@
+@echo off
+
 rem #############################################################################
 rem  Important: Set this first to tell the script where to install the map files
 rem  Example:
-rem    set /A INSTALLATION_PATH=    \todo: set an example here and test the script on windows
+rem    set INSTALLATION_PATH=C:\Users\%USERNAME%\Documents\My Games\0ad\mods\user\maps\random\
 rem #############################################################################
-set /A INSTALLATION_PATH=
+set INSTALLATION_PATH=C:\Users\%USERNAME%\Documents\My Games\0ad\mods\user\maps\random\
 
 
 rem #############################################################################
 rem  Server address and file names
 rem #############################################################################
-set /A SERVER_HTTP=http://elgee.bplaced.net/maps0ad/maps/
-set /A FILES[0]=jebel_barkal_2.js
-set /A FILES[1]=jebel_barkal_2.json
-set /A FILES[2]=jebel_barkal_2.pmp 
-set /A FILEs[3]=jebel_barkal_2_triggers.js
+set SERVER_HTTP=http://elgee.bplaced.net/maps0ad/maps/
+set FILES=jebel_barkal_2.js jebel_barkal_2.json jebel_barkal_2.pmp jebel_barkal_2_triggers.js
 
 
 rem #############################################################################
@@ -27,8 +26,8 @@ if "%INSTALLATION_PATH%"=="" (
 rem #############################################################################
 rem  Download files to installation path
 rem #############################################################################
-for /L %%i in (0 1 3) do (
-    call curl -P %SERVER_HTTP%/%%FILES[%%i]%% -o %INSTALLATION_PATH%/%%FILES[%%i]%%
+for %%f in (%FILES%) do (
+    call curl --create-dirs -o "%INSTALLATION_PATH%%%f" "%SERVER_HTTP%%%f"
 )
 
-echo "Done. Enjoy."
+echo Done. Enjoy.
