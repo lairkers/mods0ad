@@ -95,6 +95,7 @@ const oKushChampions = [
 ];
 const oPtolSiege = ["units/ptol/siege_lithobolos_unpacked", "units/ptol/siege_polybolos_unpacked"];
 const oPtolSiegeWall = ["units/ptol/siege_lithobolos_unpacked", "units/ptol/siege_polybolos_unpacked", "units/ptol/siege_polybolos_unpacked", "units/ptol/siege_polybolos_unpacked"];
+const oKushPtolShip = ["units/kush/ship_trireme", "units/ptol/ship_bireme", "units/ptol/ship_trireme", "units/ptol/ship_quinquereme"]
 const oTriggerPointCityPath = "trigger/trigger_point_A";
 const oTriggerPointAttackerPatrol = "trigger/trigger_point_B";
 
@@ -1452,6 +1453,15 @@ createObjectGroupsByAreas(
 	scaleByMapSize(1, 6) * 6 * getDifficulty(),
 	250,
 	[areaWallSiege]);
+
+g_Map.log("Placing ships in the water");                                                                                /* Added ships in river to prevent fishing */
+createObjectGroupsByAreas(
+	new SimpleGroup([new RandomObject(oKushPtolShip, 1, 1, 1, 4)], true, clSoldier),
+	0,
+	new StaticConstraint([avoidClasses(clFertileLand, 4)]),
+	scaleByMapSize(1, 5) / 3 * getDifficulty(),
+	250,
+	[areaWater]);
 
 const avoidCollisionsPyramids = new StaticConstraint([avoidCollisions, new NearTileClassConstraint(clPyramid, 10)]);
 if (!isNomad())
