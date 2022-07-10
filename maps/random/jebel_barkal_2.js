@@ -684,12 +684,20 @@ for (let i = 0; i < numPlayers; ++i)
 		}
 	});
     
-    placePlayerBaseStartingAnimal({                                                         /* Place additional Elephants for breakfast (early game) */
+    let breakfastElephants = 
+        [
+            [1],                                                                        /* Very easy */
+            [1, 2],                                                                     /* Easy */
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3],               /* Medium */
+            [1, 1, 1, 1, 1, 2, 2, 2, 3, 3],                                             /* Hard */
+            [2, 3]                                                                      /* Very hard */
+        ];
+    placePlayerBaseStartingAnimal({                                                     /* Place additional Elephants for breakfast (early game) */
             "basePosition": playerPosition[i],
             "BaseResourceClass": clBaseResource,
             "baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),
             "template": oElephant,
-            "groupCount" : pickRandom([1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 4]),
+            "groupCount" : pickRandom(breakfastElephants[getDifficulty() - 1]),
             "distance": 5,
             "minGroupDistance": 3,
             "maxGroupDistance": 6,
