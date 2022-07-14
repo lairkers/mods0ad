@@ -687,11 +687,11 @@ for (let i = 0; i < numPlayers; ++i)
     
     let breakfastElephants = 
         [
-            [1],                                                                        /* Very easy */
-            [1, 2],                                                                     /* Easy */
+            [2, 3],                                                                     /* Very easy */
+            [1, 1, 1, 1, 1, 2, 2, 2, 3, 3],                                             /* Easy */
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3],               /* Medium */
-            [1, 1, 1, 1, 1, 2, 2, 2, 3, 3],                                             /* Hard */
-            [2, 3]                                                                      /* Very hard */
+            [1, 2],                                                                     /* Hard */
+            [1],                                                                        /* Very hard */
         ];
     placePlayerBaseStartingAnimal({                                                     /* Place additional Elephants for breakfast (early game) */
             "basePosition": playerPosition[i],
@@ -1447,7 +1447,7 @@ createObjectGroupsByAreas(
 	
 g_Map.log("Placing siege engines around the city wall");                                                                /* Added ranged sieges at wall here */
 createObjectGroupsByAreas(
-	new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 3)], true, clSoldier),
+	new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 1)], true, clSoldier),
 	0,
 	new StaticConstraint([]),
 	scaleByMapSize(1, 6) * 6 * getDifficulty(),
