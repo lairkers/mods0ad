@@ -701,7 +701,7 @@ Trigger.prototype.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn = f
             continue;
         
         Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-            "message": "Apokalyptischen Reiter am Horizont!",
+            "message": "Apokalyptischer Reiter am Horizont!",
             "players": [-1, 0, activePlayer],
             "translateMessage": false
         });
