@@ -49,4 +49,4 @@ Once one of the walls is broken, the defense escalates. This can be done by the 
 
 ## Randomizer
 All of the addons from above may be selected at game start so that the players must find out where defense
-is needed at most
+is needed at most.
