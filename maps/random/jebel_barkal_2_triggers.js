@@ -432,6 +432,12 @@ Trigger.prototype.JebelBarkal_TrackUnits = function()
 	this.jebelBarkal_apocalypticRidersSpawnPoints = TriggerHelper.GetPlayerEntitiesByClass(
 		jebelBarkal_playerID,
 		"Wonder");
+        
+    // Save number of walls to detect if 3 are broken
+    this.jebelBarkal_escalatingDefense_numOfWalls = TriggerHelper.GetPlayerEntitiesByClass(
+        jebelBarkal_playerID,
+        "Wall").length;
+    this.jebelBarkal_escalatingDefense_started = false;
 };
 
 Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficulty)
@@ -446,6 +452,7 @@ Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficult
         ];
     let startTime = startTimes[difficulty - 1];
     this.apocalypticRidersStartTime = randFloat(startTime[0], startTime[1]);
+    this.jebelBarkal_apocalypticRidersMsg = true
 }
 
 Trigger.prototype.JebelBarkal_SetDefenderStance = function()
@@ -488,10 +495,29 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 		return;
 
 	let time = TriggerHelper.GetMinutes();
-	let groupCount = Math.floor(Math.max(0, jebelBarkal_cityPatrolGroup_count(time)) - this.jebelBarkal_patrolingUnits.length);
+    let targetGroupCount = jebelBarkal_cityPatrolGroup_count(time);
+    if (this.jebelBarkal_escalatingDefense_started)                                                                             /* Escalating defense */
+        targetGroupCount = targetGroupCount * 3
+	let groupCount = Math.floor(Math.max(0, targetGroupCount) - this.jebelBarkal_patrolingUnits.length);
+    
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": "Group Count " + JSON.stringify(groupCount),
+        "translateMessage": false
+    });
 
 	this.debugLog("Spawning " + groupCount + " city patrol groups, " + this.jebelBarkal_patrolingUnits.length + " exist");
 
+    this.JebelBarkal_SpawnCityPatrolGroups_raw(time, groupCount)
+
+    let next_time = jebelBarkal_cityPatrolGroup_interval(time) * 60 * 1000;
+    if (this.jebelBarkal_escalatingDefense_started)                                                                             /* Escalating defense */
+        next_time = next_time / 3;
+    
+    this.DoAfterDelay(next_time, "JebelBarkal_SpawnCityPatrolGroups", {});
+};
+
+Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups_raw = function(time, groupCount)
+{
 	for (let i = 0; i < groupCount; ++i)
 	{
 		let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
@@ -505,6 +531,12 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 		let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
 
 		this.jebelBarkal_patrolingUnits.push(groupEntities);
+        
+
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": JSON.stringify(this.jebelBarkal_patrolingUnits.length),
+        "translateMessage": false
+    });
 
 		for (let ent of groupEntities)
 			TriggerHelper.SetUnitStance(ent, "defensive");
@@ -527,9 +559,7 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 			});
 		}
 	}
-
-	this.DoAfterDelay(jebelBarkal_cityPatrolGroup_interval(time) * 60 * 1000, "JebelBarkal_SpawnCityPatrolGroups", {});
-};
+}
 
 Trigger.prototype.JebelBarkal_SpawnTemplates = function(spawnEnt, templateCounts)
 {
@@ -657,7 +687,7 @@ Trigger.prototype.JebelBarkal_StartAttackTimer = function(delay)
  * Keep track of heroes, so that each of them remains unique.
  * Keep track of spawn points, as only there units should be spawned.
  */
-Trigger.prototype.JebelBarkal_OwnershipChange_AssertHeroesUnique = function(data)
+Trigger.prototype.JebelBarkal_OwnershipChange_KeepTrackOfUnits = function(data)
 {
 
 	let trackedEntityArrays = [
@@ -700,11 +730,13 @@ Trigger.prototype.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn = f
         if (targets.length == 0)/* Do not spawn riders for (almost) dead players */
             continue;
         
-        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-            "message": "Apokalyptischer Reiter am Horizont!",
-            "players": [-1, 0, activePlayer],
-            "translateMessage": false
-        });
+        if (this.jebelBarkal_apocalypticRidersMsg)
+            Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+                "message": "Apokalyptische Reiter am Horizont!",
+                "players": [-1, 0, activePlayer],
+                "translateMessage": false
+            });
+        this.jebelBarkal_apocalypticRidersMsg = false
         
         /* Spawn new apocalyptic rider and give command to attack */
         let spawnedEntities = TriggerHelper.SpawnUnits(
@@ -728,14 +760,38 @@ Trigger.prototype.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn = f
         });
     };
 }
+
+Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function(data)                                                    /* Escalating defense */
+{
+    if (this.jebelBarkal_escalatingDefense_started)
+        return;
+    
+    let currNumOfWalls = TriggerHelper.GetPlayerEntitiesByClass(
+        jebelBarkal_playerID,
+        "Wall").length;
+        
+    if (this.jebelBarkal_escalatingDefense_numOfWalls - currNumOfWalls < 3)
+        return;
+        
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": "DefCon 1",
+        "translateMessage": false
+    });
+    
+    this.jebelBarkal_escalatingDefense_started = true;
+    
+    // Make an immediate spawning of a lot of city patrol groups. Will be later only filled up to lower numbers bc otherwise it is impossible
+    this.JebelBarkal_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10)
+}
  
 Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 {
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
     
+    this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
-    this.JebelBarkal_OwnershipChange_AssertHeroesUnique(data);
+    this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
 };
 
 

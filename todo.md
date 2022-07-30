@@ -38,15 +38,6 @@ More ideas:
 It may happen after a while but repeatedly. Needs to be balanced properly otherwise it is not cool just annoying.
 Because you cannot do anything against it.
 
-## Escalating defense
-Once one of the walls is broken, the defense escalates. This can be done by the following ideas:
-- Size of patroling troups is increased
-- Frequency of patroling troup spawning is decreased by factor 3
-- Suddenly additional defense units spawn, e.g. bolt shooters, but only once. Maybe even "auxiliary troops"
-    which are from another civ.
-- Another idea is that not the defense escalates but the "napata attacks" is now happening more often, in 3/4
-    of the time.
-
 ## Randomizer
 All of the addons from above may be selected at game start so that the players must find out where defense
 is needed at most.
