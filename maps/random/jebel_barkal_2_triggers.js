@@ -531,12 +531,6 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups_raw = function(time, groupCo
 		let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
 
 		this.jebelBarkal_patrolingUnits.push(groupEntities);
-        
-
-    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": JSON.stringify(this.jebelBarkal_patrolingUnits.length),
-        "translateMessage": false
-    });
 
 		for (let ent of groupEntities)
 			TriggerHelper.SetUnitStance(ent, "defensive");
