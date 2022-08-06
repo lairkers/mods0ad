@@ -497,7 +497,7 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 	let time = TriggerHelper.GetMinutes();
     let targetGroupCount = jebelBarkal_cityPatrolGroup_count(time);
     if (this.jebelBarkal_escalatingDefense_started)                                                                             /* Escalating defense */
-        targetGroupCount = targetGroupCount * 3
+        targetGroupCount = targetGroupCount * (0.5 + this.GetDifficulty() / 2);
 	let groupCount = Math.floor(Math.max(0, targetGroupCount) - this.jebelBarkal_patrolingUnits.length);
 
 	this.debugLog("Spawning " + groupCount + " city patrol groups, " + this.jebelBarkal_patrolingUnits.length + " exist");
