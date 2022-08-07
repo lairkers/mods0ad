@@ -16,7 +16,7 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops.
 
 ## Apocalyptic riders (upgrade)
-There is a Stall on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
+There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
 player.
 
 ## 10 Plagues

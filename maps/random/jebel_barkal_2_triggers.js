@@ -438,6 +438,7 @@ Trigger.prototype.JebelBarkal_TrackUnits = function()
         jebelBarkal_playerID,
         "Wall").length;
     this.jebelBarkal_escalatingDefense_started = false;
+    this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls = 0;
 };
 
 Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficulty)
@@ -755,15 +756,22 @@ Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function
     if (this.jebelBarkal_escalatingDefense_started)
         return;
     
-    let currNumOfWalls = TriggerHelper.GetPlayerEntitiesByClass(
+    let numDestroyedWalls = this.jebelBarkal_escalatingDefense_numOfWalls - TriggerHelper.GetPlayerEntitiesByClass(
         jebelBarkal_playerID,
         "Wall").length;
         
-    if (this.jebelBarkal_escalatingDefense_numOfWalls - currNumOfWalls < 3)
-        return;
+    if ((this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls != numDestroyedWalls) && (numDestroyedWalls <= 3))
+        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+            "message": "DefCon " + (4 - numDestroyedWalls),
+            "translateMessage": false
+        });
+    this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls = numDestroyedWalls;
         
+    if (numDestroyedWalls < 3)
+        return;
+    
     Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": "DefCon 1",
+        "message": "Alle zu den Waffen!",
         "translateMessage": false
     });
     
