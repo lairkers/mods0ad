@@ -425,13 +425,22 @@ Engine.SetProgress(30);
 
 g_Map.log("Computing player locations");
 const playerIDs = sortAllPlayers();
-const playerPosition = playerPlacementArcs(
-	playerIDs,
-	mapCenter,
-	fractionToTiles(0.38),
-	riverAngle - 0.5 * Math.PI,
-	0.05 * Math.PI,
-	0.55 * Math.PI);
+let numOfTeams = Array.from(new Set(playerIDs.map(getPlayerTeam))).length;                                                                            /* Always sorted Teams, either left or right */
+let mapAngle = riverAngle - 0.5 * Math.PI;
+let startAngle = 0.05 * Math.PI;
+let endAngle = 0.55 * Math.PI;
+let playerPosition = null;
+if (numOfTeams == 1)
+{
+    if (pickRandom([true, false]))
+        playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle + startAngle, mapAngle + endAngle);
+    else
+        playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle - startAngle, mapAngle - endAngle);
+}
+else
+{
+    playerPosition = playerPlacementArcs(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle, startAngle, endAngle);
+}
 
 if (!isNomad())
 {
