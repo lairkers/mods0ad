@@ -442,7 +442,7 @@ Trigger.prototype.JebelBarkal_TrackUnits = function()
 };
 
 Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficulty)
-{
+{                                                                       
     let startTimes = 
         [
             [99, 99],      /* Very easy */
@@ -452,7 +452,7 @@ Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficult
             [20, 30],      /* Very hard */
         ];
     let startTime = startTimes[difficulty - 1];
-    this.apocalypticRidersStartTime = randFloat(startTime[0], startTime[1]);
+    this.apocalypticRidersStartTime = 999; //randFloat(startTime[0], startTime[1]);                           // FIXME: deactivated until fully implemented
     this.jebelBarkal_apocalypticRidersMsg = true
 }
 
@@ -481,10 +481,40 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 	}
 };
 
+Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtClasses = function(playerID, classes, templates, capacityPercent)
+{
+	let results = {};
+    let i = 0;
+
+	for (let entGarrTurrHolder of Engine.QueryInterface(SYSTEM_ENTITY, IID_RangeManager).GetEntitiesByPlayer(playerID))
+	{
+		let cmpIdentity = Engine.QueryInterface(entGarrTurrHolder, IID_Identity);
+		if (!cmpIdentity || !MatchesClassList(cmpIdentity.GetClassesList(), classes))
+			continue;
+
+		let cmpGarrisonHolder = Engine.QueryInterface(entGarrTurrHolder, IID_GarrisonHolder);
+		let cmpTurrentHolder = Engine.QueryInterface(entGarrTurrHolder, IID_TurretHolder);
+		if (!cmpGarrisonHolder && !cmpTurrentHolder)
+			continue;
+
+        let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
+		results[entGarrTurrHolder] = TriggerHelper.RandomTemplateComposition(templates, Math.floor(cmpSpace * capacityPercent));
+
+        if (cmpGarrisonHolder)
+            for (let template in results[entGarrTurrHolder])
+                TriggerHelper.SpawnGarrisonedUnits(entGarrTurrHolder, template, results[entGarrTurrHolder][template], playerID);
+        else
+            for (let template in results[entGarrTurrHolder])
+                TriggerHelper.SpawnTurretedUnits(entGarrTurrHolder, template, results[entGarrTurrHolder][template], playerID);
+	}
+
+	return results;
+};
+
 Trigger.prototype.JebelBarkal_GarrisonBuildings = function()
 {
 	for (let buildingGarrison of jebelBarkal_buildingGarrison(this.GetDifficulty()))
-		TriggerHelper.SpawnAndGarrisonAtClasses(jebelBarkal_playerID, buildingGarrison.buildingClasses, buildingGarrison.unitTemplates, buildingGarrison.capacityRatio);
+		this.jebelBarkal_SpawnAndGarrisonAtClasses(jebelBarkal_playerID, buildingGarrison.buildingClasses, buildingGarrison.unitTemplates, buildingGarrison.capacityRatio);
 };
 
 /**

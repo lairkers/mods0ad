@@ -1,25 +1,42 @@
 # Ideas for further development
 
-## (Minor) Patroling ships
-Small upgrade to guard the river. Alternatively the ships are further away from the coast to allow
-building of a harbour but prevent trade.
-
-## (Minor) Manned walls
-Still open TODO to garrison troops in the wall - maybe on game start bc jebel_barkal_2.js does everything
-but archers on top of the wall... bug in the game?
-
 ## Pirates
 After a while (40 min?) pirates attack from river side. They do not have siege units, as this may be too hard
 if you have all your defense in the north.
 This may happen instead of Napata attacks, OR in addition to Napata. It may also happen repeatedly or only once.
 
-Alternatively 'Caesar' attacks from left or right with Roman troops.
+Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
+random houses.
 
-## Apocalyptic riders (upgrade)
+## Winning note
+If all spawning houses + all patrols are defeated, at least a hint appears that the game is won.
+
+## Flooding defense - escalating defense upgrade
+After escalating defense happens, in the next "Napata attacks" all spawned units, also the ones from the
+escalating defense, support the attack.
+
+## Rebuilding city
+If a building is destroyed, a citizen (or mutiple?) are spawned to rebuild it.
+To be clearified: Same location? => no, let's place the replacement anywhere on the map? That would be funny.
+
+## [minor] Manned walls
+Still open TODO to garrison troops in the wall - maybe on game start bc jebel_barkal_2.js does everything
+but archers on top of the wall... bug in the game?
+-> Try to check what danubius is doing to man the ships.
+
+## [low prio] Apocalyptic riders upgrade
 There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
 player.
 
-## 10 Plagues
+## [low prio] Randomizer
+All of the addons from above may be selected at game start so that the players must find out where defense
+is needed at most.
+
+## [minor] [discarded] Patroling ships
+Small upgrade to guard the river. Alternatively the ships are further away from the coast to allow
+building of a harbour but prevent trade.
+
+## [discarded] 10 Plagues
 This may be one of the following list.
 1. Blood == Cannot drink water for 7 days   -> No fish
 2. Frogs: ??        -> Spawns chicken around civic centres (not really a harm)
@@ -37,7 +54,3 @@ More ideas:
 - Kill elephants in the desert
 It may happen after a while but repeatedly. Needs to be balanced properly otherwise it is not cool just annoying.
 Because you cannot do anything against it.
-
-## Randomizer
-All of the addons from above may be selected at game start so that the players must find out where defense
-is needed at most.
