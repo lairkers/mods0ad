@@ -8,9 +8,6 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
 random houses.
 
-## Winning note
-If all spawning houses + all patrols are defeated, at least a hint appears that the game is won.
-
 ## Flooding defense - escalating defense upgrade
 After escalating defense happens, in the next "Napata attacks" all spawned units, also the ones from the
 escalating defense, support the attack.
@@ -24,7 +21,7 @@ There is a stable on top of the mountain which spawns apocalyctic riders, but gr
 player.
 
 ## [low prio] Randomizer
-All of the addons from above may be selected at game start so that the players must find out where defense
+All of the addons may be selected at game start so that the players must find out where defense
 is needed at most.
 
 ## [minor] [discarded] Patroling ships
