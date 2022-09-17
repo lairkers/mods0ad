@@ -201,8 +201,8 @@ var jebelBarkal_buildingGarrison = difficulty => [
 		"capacityRatio": difficulty >= 3 ? 1 : 0
 	},
 	{
-		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],                                                         /* \todo this is still broken */
-		"unitTemplates": difficulty > 3 ? jebelBarkal_templates.champion_infantry_ranged : jebelBarkal_templates.citizenSoldier_infantry_ranged,
+		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],
+		"unitTemplates": jebelBarkal_templates.citizenSoldier_infantry_ranged,
 		"capacityRatio": (difficulty - 2) / 3
 	}
 ];
@@ -439,6 +439,9 @@ Trigger.prototype.JebelBarkal_TrackUnits = function()
         "Wall").length;
     this.jebelBarkal_escalatingDefense_started = false;
     this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls = 0;
+    
+    // Save that game is not yet won
+    this.jebelBarkal_won = false;
 };
 
 Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficulty)
@@ -528,7 +531,7 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 	let time = TriggerHelper.GetMinutes();
     let targetGroupCount = jebelBarkal_cityPatrolGroup_count(time);
     if (this.jebelBarkal_escalatingDefense_started)                                                                             /* Escalating defense */
-        targetGroupCount = targetGroupCount * (0.5 + this.GetDifficulty() / 2);
+        targetGroupCount = targetGroupCount * (0.5 + this.GetDifficulty() / 3);
 	let groupCount = Math.floor(Math.max(0, targetGroupCount) - this.jebelBarkal_patrolingUnits.length);
 
 	this.debugLog("Spawning " + groupCount + " city patrol groups, " + this.jebelBarkal_patrolingUnits.length + " exist");
@@ -792,7 +795,7 @@ Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function
         
     if ((this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls != numDestroyedWalls) && (numDestroyedWalls <= 3))
         Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-            "message": "DefCon " + (4 - numDestroyedWalls),
+            "message": "DefCon " + (3 - numDestroyedWalls),
             "translateMessage": false
         });
     this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls = numDestroyedWalls;
@@ -810,12 +813,29 @@ Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function
     // Make an immediate spawning of a lot of city patrol groups. Will be later only filled up to lower numbers bc otherwise it is impossible
     this.JebelBarkal_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10)
 }
+
+Trigger.prototype.JebelBarkal_OwnershipChange_DetectWin = function(data)
+{
+    if (this.jebelBarkal_won)
+        return;
+    
+    // Game is won if all attack production entities are destroyed
+    let classes = ["Wonder", "Fortress", "Temple", "Stable", "Barracks", "Embassy", "Arsenal", "ElephantStable"];
+    if (0 == TriggerHelper.GetPlayerEntitiesByClass(jebelBarkal_playerID, classes).length)
+    {
+        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+            "message": "Napata wurde besiegt!"
+        });
+        this.jebelBarkal_won = true;
+    }
+}
  
 Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 {
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
     
+    this.JebelBarkal_OwnershipChange_DetectWin(data);
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);

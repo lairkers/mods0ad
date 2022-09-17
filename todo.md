@@ -19,11 +19,6 @@ escalating defense, support the attack.
 If a building is destroyed, a citizen (or mutiple?) are spawned to rebuild it.
 To be clearified: Same location? => no, let's place the replacement anywhere on the map? That would be funny.
 
-## [minor] Manned walls
-Still open TODO to garrison troops in the wall - maybe on game start bc jebel_barkal_2.js does everything
-but archers on top of the wall... bug in the game?
--> Try to check what danubius is doing to man the ships.
-
 ## [low prio] Apocalyptic riders upgrade
 There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
 player.
