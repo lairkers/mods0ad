@@ -685,6 +685,39 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 	}
 
 	this.debugLog("Total attackers: " + totalSpawnCount);
+    
+    if (this.jebelBarkal_escalatingDefense_started)                                                         // Escalating defense upgrade == flooding defense
+    {
+        // Now also send all existing patroling groups towards players
+        for (let groupEntities of this.jebelBarkal_patrolingUnits)
+        {
+            let targets = playerEntities.reduce((allTargets, playerEnts) =>
+                allTargets.concat(shuffleArray(TriggerHelper.MatchEntitiesByClass(playerEnts, "Unit+!Ship")).slice(0, 10)), []);
+            if (!targets.length)
+                continue;
+        
+            for (let ent of groupEntities)
+                TriggerHelper.SetUnitStance(ent, "aggressive");
+
+            TriggerHelper.SetUnitFormation(jebelBarkal_playerID, groupEntities, pickRandom(jebelBarkal_formations));
+
+            for (let patrolTarget of shuffleArray(this.GetTriggerPoints(jebelBarkal_cityPatrolGroup_triggerPointPath)))
+            {
+                let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
+                ProcessCommand(jebelBarkal_playerID, {
+                    "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
+                    "entities": groupEntities,
+                    "x": pos.x,
+                    "z": pos.y,
+                    "targetClasses": {
+                        "attack": "Unit+!Ship"
+                    },
+                    "queued": false,
+                    "allowCapture": false
+                });
+            }
+        }
+    }
 
 	if (totalSpawnCount)
 		Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
