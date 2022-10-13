@@ -22,7 +22,7 @@ var jebelBarkal_rank = "Basic";
 /**
  * Limit the total amount of gaia units spawned for performance reasons.
  */
-var jebelBarkal_maxPopulation = 8 * 150;
+var jebelBarkal_maxPopulation = 8 * 100;
 
 /**
  * These are the templates spawned at the gamestart and during the game.
@@ -203,7 +203,7 @@ var jebelBarkal_buildingGarrison = difficulty => [
 	{
 		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],
 		"unitTemplates": jebelBarkal_templates.citizenSoldier_infantry_ranged,
-		"capacityRatio": (difficulty - 2) / 3
+		"capacityRatio": difficulty >= 3 ? 0.25 : 0
 	}
 ];
 
@@ -380,7 +380,7 @@ Trigger.prototype.JebelBarkal_Init = function()
 {
 	let isNomad = !TriggerHelper.GetAllPlayersEntitiesByClass("CivCentre").length;
 
-	this.JebelBarkal_TrackUnits();
+	this.JebelBarkal_Init_TrackUnits();
 	this.RegisterTrigger("OnOwnershipChanged", "JebelBarkal_OwnershipChange", { "enabled": true });
 
 	this.JebelBarkal_SetDefenderStance();
@@ -390,9 +390,55 @@ Trigger.prototype.JebelBarkal_Init = function()
 	this.JebelBarkal_StartAttackTimer(jebelBarkal_firstAttackTime(this.GetDifficulty(), isNomad));
     
     this.JebelBarkal_SetApocalypticRidersStartTime(this.GetDifficulty());
+    
+    return;
+    
+    //
+    // Test code for rebuilding the city. Deactivated currently. Works but newly created stable is not recognized as spawning entity.
+    //
+    
+    // Create units
+    let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
+    let templateCounts = TriggerHelper.BalancedTemplateComposition(
+        jebelBarkal_cityPatrolGroup_balancing.unitComposition(10, this.jebelBarkal_heroes),
+        jebelBarkal_cityPatrolGroup_balancing.unitCount(10));
+    let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
+    
+    //Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+    //    "message": markForTranslation("abc: " + JSON.stringify(groupEntities)),
+    //    "translateMessage": true
+    //});
+    
+    // Define destination(s)
+    let triggerPoints =
+        shuffleArray(
+            this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol));
+    let t = triggerPoints[0];
+    
+    let pos = TriggerHelper.GetEntityPosition2D(t);
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": markForTranslation("abc: " + JSON.stringify(pos)),
+        "translateMessage": true
+    });
+    
+
+    ProcessCommand(jebelBarkal_playerID, {
+		"type": "construct",
+		"template": "structures/kush/stable",
+		"x": pos.x,
+		"z": pos.y,
+		"angle": 0,
+		"actorSeed": 0,
+		"entities": groupEntities,
+		"autorepair": true,
+		"autocontinue": false,
+		"queued": false,
+		"pushFront": false,
+		"formation": pickRandom(jebelBarkal_formations)
+    });
 };
 
-Trigger.prototype.JebelBarkal_TrackUnits = function()
+Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
 {
 	// Each item is an entity ID
 	this.jebelBarkal_heroes = [];
@@ -701,21 +747,18 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 
             TriggerHelper.SetUnitFormation(jebelBarkal_playerID, groupEntities, pickRandom(jebelBarkal_formations));
 
-            for (let patrolTarget of shuffleArray(this.GetTriggerPoints(jebelBarkal_cityPatrolGroup_triggerPointPath)))
-            {
-                let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
-                ProcessCommand(jebelBarkal_playerID, {
-                    "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
-                    "entities": groupEntities,
-                    "x": pos.x,
-                    "z": pos.y,
-                    "targetClasses": {
-                        "attack": "Unit+!Ship"
-                    },
-                    "queued": false,
-                    "allowCapture": false
-                });
-            }
+            let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
+            ProcessCommand(jebelBarkal_playerID, {
+                "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
+                "entities": groupEntities,
+                "x": pos.x,
+                "z": pos.y,
+                "targetClasses": {
+                    "attack": "Unit+!Ship"
+                },
+                "queued": false,
+                "allowCapture": false
+            });
         }
     }
 

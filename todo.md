@@ -1,6 +1,6 @@
 # Ideas for further development
 
-## Pirates
+## Pirates / Ceasar
 After a while (40 min?) pirates attack from river side. They do not have siege units, as this may be too hard
 if you have all your defense in the north.
 This may happen instead of Napata attacks, OR in addition to Napata. It may also happen repeatedly or only once.
@@ -8,13 +8,14 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
 random houses.
 
-## Flooding defense - escalating defense upgrade
-After escalating defense happens, in the next "Napata attacks" all spawned units, also the ones from the
-escalating defense, support the attack.
+## Turretted walls are randomized
 
 ## Rebuilding city
 If a building is destroyed, a citizen (or mutiple?) are spawned to rebuild it.
 To be clearified: Same location? => no, let's place the replacement anywhere on the map? That would be funny.
+
+## [low prio] Flooding defense upgrade
+Counter attack a.k.a. flooding defense is only executed after 1, 2 or 3 napata attack cycles
 
 ## [low prio] Apocalyptic riders upgrade
 There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per

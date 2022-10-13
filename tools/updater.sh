@@ -3,9 +3,9 @@
 ##############################################################################
 # Important: Set this first to tell the script where to install the map files
 # Example:
-#   INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps
+#   INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps/random
 ##############################################################################
-INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps
+INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps/random
 
 
 ##############################################################################
