@@ -73,6 +73,10 @@ release:
         --file $(MAP_ALL_FILES) $(UPDATER_WIN) $(UPDATER_UNIX)
 
 
+# Download from FTP server
+update:
+	$(UPDATER_UNIX)
+
 # Cleanup
 clean:
 	$(RM) $(TEST_ROOT)

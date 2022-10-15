@@ -203,7 +203,7 @@ var jebelBarkal_buildingGarrison = difficulty => [
 	{
 		"buildingClasses": ["WallLong", "WallMedium", "WallShort"],
 		"unitTemplates": jebelBarkal_templates.citizenSoldier_infantry_ranged,
-		"capacityRatio": difficulty >= 3 ? 0.25 : 0
+		"capacityRatio": difficulty >= 3 ? 0.5 : 0
 	}
 ];
 
@@ -547,7 +547,7 @@ Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtClasses = function(playerID, cla
 			continue;
 
         let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
-		results[entGarrTurrHolder] = TriggerHelper.RandomTemplateComposition(templates, Math.floor(cmpSpace * capacityPercent));
+		results[entGarrTurrHolder] = TriggerHelper.RandomTemplateComposition(templates, randIntInclusive(0, Math.floor(cmpSpace * capacityPercent)));
 
         if (cmpGarrisonHolder)
             for (let template in results[entGarrTurrHolder])

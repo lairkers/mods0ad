@@ -8,8 +8,6 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
 random houses.
 
-## Turretted walls are randomized
-
 ## Rebuilding city
 If a building is destroyed, a citizen (or mutiple?) are spawned to rebuild it.
 To be clearified: Same location? => no, let's place the replacement anywhere on the map? That would be funny.
