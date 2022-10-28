@@ -12,7 +12,7 @@ const dryRun = false;
 /**
  * If enabled, prints the number of units to the command line output.
  */
-const showDebugLog = false;
+const showDebugLog = true;
 
 /**
  * Since Gaia doesn't have a TechnologyManager, Advanced and Elite soldiers have the same statistics as Basic.
@@ -69,8 +69,8 @@ var jebelBarkal_formations = [
 var scaleByTime = (minCurrent, min0, min60) => min0 + (min60 - min0) * Math.min(1, minCurrent / 60);
 
 /**
- *  @returns min0 value at the beginning of the game, min60 after an hour of gametime or longer and
- *  a proportionate number between these two values before the first hour is reached.
+ *  @returns min value at map size 128 (very small), max at map size 512 and
+ *  a proportionate number between these two values.
  */
 var scaleByMapSize = (min, max) => min + (max - min) * (TriggerHelper.GetMapSizeTiles() - 128) / (512 - 128);
 
@@ -373,8 +373,162 @@ var jebelBarkal_attackerGroup_balancing = [
 Trigger.prototype.debugLog = function(txt)
 {
 	if (showDebugLog)
-		print("DEBUG [" + Math.round(TriggerHelper.GetMinutes()) + "] " + txt + "\n");
+    {
+        let realtime = JSON.stringify(new Date()).split('T')[1].replace('\"', '').replace('Z', '');
+        let ingametime = Math.round(TriggerHelper.GetTime());
+		print("DEBUG [" + realtime + "] [" + ingametime + "] " + txt + "\n");
+    }
 };
+
+// Function to create random position inside the map
+Trigger.prototype.JebelBarkal_rebuildCity_getRandomPosition = function()
+{
+    let mapradius = TriggerHelper.GetMapSizeTiles() * 2;
+    let alpha = randFloat(0, 2 * Math.PI);              // TODO: restrict to desert?
+    let radius = randFloat(0, mapradius);               // TODO: avoid inside the city?
+    let x = Math.floor(Math.cos(alpha) * radius + mapradius);
+    let y = Math.floor(Math.sin(alpha) * radius + mapradius);
+
+    return { "x": x, "y": y };
+}
+
+// Modified version of TryConstructBuilding()
+Trigger.prototype.JebelBarkal_rebuildCity_TryConstructBuilding = function(player, cmpPlayer, controlAllUnits, cmd)
+{
+	var foundationTemplate = "foundation|" + cmd.template;
+
+	// Tentatively create the foundation (we might find later that it's a invalid build command)
+	var ent = Engine.AddEntity(foundationTemplate);
+	if (ent == INVALID_ENTITY)
+	{
+		// Error (e.g. invalid template names)
+		error("Error creating foundation entity for '" + cmd.template + "'");
+		return false;
+	}
+
+	// Move the foundation to the right place
+	var cmpPosition = Engine.QueryInterface(ent, IID_Position);
+	cmpPosition.JumpTo(cmd.x, cmd.z);
+	cmpPosition.SetYRotation(cmd.angle);
+
+	// Make it owned by the current player
+	var cmpOwnership = Engine.QueryInterface(ent, IID_Ownership);
+	cmpOwnership.SetOwner(player);
+
+	// Check whether building placement is valid
+	var cmpBuildRestrictions = Engine.QueryInterface(ent, IID_BuildRestrictions);
+	if (cmpBuildRestrictions)
+	{
+		var ret = cmpBuildRestrictions.CheckPlacement();
+		if (!ret.success)
+		{
+			//warn("Invalid command: build restrictions check failed with '"+ret.message+"' for player "+player+": "+uneval(cmd));
+
+			var cmpGuiInterface = Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface);
+			ret.players = [player];
+			cmpGuiInterface.PushNotification(ret);
+
+			// Remove the foundation because the construction was aborted
+			// move it out of world because it's not destroyed immediately.
+			cmpPosition.MoveOutOfWorld();
+			Engine.DestroyEntity(ent);
+			return false;
+		}
+	}
+	else
+		error("cmpBuildRestrictions not defined");
+
+	// Check entity limits
+	var cmpEntityLimits = QueryPlayerIDInterface(player, IID_EntityLimits);
+	if (cmpEntityLimits && !cmpEntityLimits.AllowedToBuild(cmpBuildRestrictions.GetCategory()))
+	{
+		//warn("Invalid command: build limits check failed for player "+player+": "+uneval(cmd));
+
+		// Remove the foundation because the construction was aborted
+		cmpPosition.MoveOutOfWorld();
+		Engine.DestroyEntity(ent);
+		return false;
+	}
+
+	var cmpVisual = Engine.QueryInterface(ent, IID_Visual);
+	if (cmpVisual && cmd.actorSeed !== undefined)
+		cmpVisual.SetActorSeed(cmd.actorSeed);
+
+	// Initialise the foundation
+	var cmpFoundation = Engine.QueryInterface(ent, IID_Foundation);
+	cmpFoundation.InitialiseConstruction(cmd.template);
+
+	// Tell the units to start building this new entity
+	if (cmd.autorepair)
+	{
+		ProcessCommand(player, {
+			"type": "repair",
+			"entities": cmd.entities,
+			"target": ent,
+			"autocontinue": cmd.autocontinue,
+			"queued": cmd.queued,
+			"pushFront": cmd.pushFront,
+			"formation": cmd.formation || undefined
+		});
+	}
+
+	return ent;
+}
+
+Trigger.prototype.JebelBarkal_rebuildCity_PlaceAndConstruct = function(template, retryCount)
+{
+    /* Step 1: Spawn group of units */
+    let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
+    let templateCounts = TriggerHelper.BalancedTemplateComposition(
+        [{
+			"templates": jebelBarkal_templates.citizenSoldier_infantry,
+			"frequency": 1
+		}],
+        5);
+    let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
+    this.JebelBarkal_PrepareEntitiesForRandomAttack(groupEntities);
+
+    /* Step 2: Try to place a foundation somewhere */
+    let ent = false;
+    for (let i = 0; i < retryCount && !ent; i ++) {
+        let pos = this.JebelBarkal_rebuildCity_getRandomPosition();
+        
+        let cmd = {
+            "type": "construct",
+            "template": template,
+            "x": pos.x,
+            "z": pos.y,
+            "angle": 3 * Math.PI / 4,
+            "actorSeed": randIntExclusive(0, Math.pow(2, 16)),
+            "entities": groupEntities,
+            "autorepair": true,
+            "autocontinue": false,
+            "queued": true,
+            "pushFront": false,
+            "formation": pickRandom(jebelBarkal_formations)
+        };
+        
+        let cmpPlayer = QueryPlayerIDInterface(jebelBarkal_playerID);
+
+        ent = this.JebelBarkal_rebuildCity_TryConstructBuilding(
+            jebelBarkal_playerID,
+            cmpPlayer,
+            cmpPlayer.CanControlAllUnits(),
+            cmd
+        );
+    }
+    
+    /* Step 3: If building could be placed, store foundation id for JebelBarkal_StructureBuilt() */
+    if (ent)
+        this.JebelBarkal_rebuildCity_unfinishedBuildings.push(ent);
+        
+    /* Step 4: Queue command for random attack, if building finished */
+    let activePlayers = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers();
+    let playerEntities = activePlayers.map(playerID =>
+        TriggerHelper.GetEntitiesByPlayer(playerID).filter(TriggerHelper.IsInWorld));
+    let patrolPoints = this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol);
+    this.JebelBarkal_SendEntitiesToRandomAttack(playerEntities, patrolPoints, groupEntities, true);
+}
 
 Trigger.prototype.JebelBarkal_Init = function()
 {
@@ -382,6 +536,7 @@ Trigger.prototype.JebelBarkal_Init = function()
 
 	this.JebelBarkal_Init_TrackUnits();
 	this.RegisterTrigger("OnOwnershipChanged", "JebelBarkal_OwnershipChange", { "enabled": true });
+    this.RegisterTrigger("OnStructureBuilt", "JebelBarkal_StructureBuilt", { "enabled": true });
 
 	this.JebelBarkal_SetDefenderStance();
 	this.JebelBarkal_StartRitualAnimations();
@@ -391,52 +546,30 @@ Trigger.prototype.JebelBarkal_Init = function()
     
     this.JebelBarkal_SetApocalypticRidersStartTime(this.GetDifficulty());
     
-    return;
-    
-    //
-    // Test code for rebuilding the city. Deactivated currently. Works but newly created stable is not recognized as spawning entity.
-    //
-    
-    // Create units
-    let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
-    let templateCounts = TriggerHelper.BalancedTemplateComposition(
-        jebelBarkal_cityPatrolGroup_balancing.unitComposition(10, this.jebelBarkal_heroes),
-        jebelBarkal_cityPatrolGroup_balancing.unitCount(10));
-    let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
-    
-    //Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-    //    "message": markForTranslation("abc: " + JSON.stringify(groupEntities)),
-    //    "translateMessage": true
-    //});
-    
-    // Define destination(s)
-    let triggerPoints =
-        shuffleArray(
-            this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol));
-    let t = triggerPoints[0];
-    
-    let pos = TriggerHelper.GetEntityPosition2D(t);
-    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": markForTranslation("abc: " + JSON.stringify(pos)),
-        "translateMessage": true
-    });
-    
-
-    ProcessCommand(jebelBarkal_playerID, {
-		"type": "construct",
-		"template": "structures/kush/stable",
-		"x": pos.x,
-		"z": pos.y,
-		"angle": 0,
-		"actorSeed": 0,
-		"entities": groupEntities,
-		"autorepair": true,
-		"autocontinue": false,
-		"queued": false,
-		"pushFront": false,
-		"formation": pickRandom(jebelBarkal_formations)
-    });
+    this.JebelBarkal_rebuildCity_unfinishedBuildings = [];
 };
+
+Trigger.prototype.JebelBarkal_StructureBuilt = function(data)
+{
+    let index = this.JebelBarkal_rebuildCity_unfinishedBuildings.indexOf(data.foundation);
+    if (index > -1)
+    {
+        this.JebelBarkal_rebuildCity_unfinishedBuildings.splice(index, 1);  // Remove foundation id from intermediate buffer
+        this.jebelBarkal_attackerGroupSpawnPoints.push(data.building);      // Add new building to spawn points
+        this.jebelBarkal_patrolGroupSpawnPoints.push(data.building);
+        
+        // Garrison troops in newly finished building
+		let entityClasses = Engine.QueryInterface(data.building, IID_Identity).GetClassesList();
+        for (let buildingGarrison of jebelBarkal_buildingGarrison(this.GetDifficulty()))
+        {
+            if (buildingGarrison.buildingClasses.filter(value => entityClasses.includes(value)).length > 0)
+            {
+                this.jebelBarkal_SpawnAndGarrisonAtEntity(jebelBarkal_playerID, data.building, buildingGarrison.unitTemplates, buildingGarrison.capacityRatio)
+                break;
+            }
+        }
+    }
+}
 
 Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
 {
@@ -454,9 +587,7 @@ Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
     this.numApocalypticRiders = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers().length;
 	this.jebelBarkal_apocalypticRiders = [];
     for (let i = 0; i < this.numApocalypticRiders; i ++)
-    {
         this.jebelBarkal_apocalypticRiders[i] = 0;
-    };
 
 	// Array of entityIDs where patrol groups can spawn
 	this.jebelBarkal_patrolGroupSpawnPoints = TriggerHelper.GetPlayerEntitiesByClass(
@@ -528,36 +659,37 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 		if (cmpVisual && jebelBarkal_ritualAnimations.indexOf(cmpVisual.GetAnimationName()) == -1)
 			cmpVisual.SelectAnimation(pickRandom(jebelBarkal_ritualAnimations), false, 1, "");
 	}
+    
+};
+
+Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entGarrTurrHolder, templates, capacityPercent)
+{
+    let cmpGarrisonHolder = Engine.QueryInterface(entGarrTurrHolder, IID_GarrisonHolder);
+    let cmpTurrentHolder = Engine.QueryInterface(entGarrTurrHolder, IID_TurretHolder);
+    if (!cmpGarrisonHolder && !cmpTurrentHolder)
+        return;
+
+    let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
+    let templateCompositions = TriggerHelper.RandomTemplateComposition(templates, randIntInclusive(0, Math.floor(cmpSpace * capacityPercent)));
+
+    if (cmpGarrisonHolder)
+        for (let template in templateCompositions)
+            TriggerHelper.SpawnGarrisonedUnits(entGarrTurrHolder, template, templateCompositions[template], playerID);
+    else
+        for (let template in templateCompositions)
+            TriggerHelper.SpawnTurretedUnits(entGarrTurrHolder, template, templateCompositions[template], playerID);
 };
 
 Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtClasses = function(playerID, classes, templates, capacityPercent)
 {
-	let results = {};
-    let i = 0;
-
 	for (let entGarrTurrHolder of Engine.QueryInterface(SYSTEM_ENTITY, IID_RangeManager).GetEntitiesByPlayer(playerID))
 	{
 		let cmpIdentity = Engine.QueryInterface(entGarrTurrHolder, IID_Identity);
 		if (!cmpIdentity || !MatchesClassList(cmpIdentity.GetClassesList(), classes))
 			continue;
-
-		let cmpGarrisonHolder = Engine.QueryInterface(entGarrTurrHolder, IID_GarrisonHolder);
-		let cmpTurrentHolder = Engine.QueryInterface(entGarrTurrHolder, IID_TurretHolder);
-		if (!cmpGarrisonHolder && !cmpTurrentHolder)
-			continue;
-
-        let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
-		results[entGarrTurrHolder] = TriggerHelper.RandomTemplateComposition(templates, randIntInclusive(0, Math.floor(cmpSpace * capacityPercent)));
-
-        if (cmpGarrisonHolder)
-            for (let template in results[entGarrTurrHolder])
-                TriggerHelper.SpawnGarrisonedUnits(entGarrTurrHolder, template, results[entGarrTurrHolder][template], playerID);
-        else
-            for (let template in results[entGarrTurrHolder])
-                TriggerHelper.SpawnTurretedUnits(entGarrTurrHolder, template, results[entGarrTurrHolder][template], playerID);
+        
+        this.jebelBarkal_SpawnAndGarrisonAtEntity(playerID, entGarrTurrHolder, templates, capacityPercent);
 	}
-
-	return results;
 };
 
 Trigger.prototype.JebelBarkal_GarrisonBuildings = function()
@@ -737,28 +869,8 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
         // Now also send all existing patroling groups towards players
         for (let groupEntities of this.jebelBarkal_patrolingUnits)
         {
-            let targets = playerEntities.reduce((allTargets, playerEnts) =>
-                allTargets.concat(shuffleArray(TriggerHelper.MatchEntitiesByClass(playerEnts, "Unit+!Ship")).slice(0, 10)), []);
-            if (!targets.length)
-                continue;
-        
-            for (let ent of groupEntities)
-                TriggerHelper.SetUnitStance(ent, "aggressive");
-
-            TriggerHelper.SetUnitFormation(jebelBarkal_playerID, groupEntities, pickRandom(jebelBarkal_formations));
-
-            let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
-            ProcessCommand(jebelBarkal_playerID, {
-                "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
-                "entities": groupEntities,
-                "x": pos.x,
-                "z": pos.y,
-                "targetClasses": {
-                    "attack": "Unit+!Ship"
-                },
-                "queued": false,
-                "allowCapture": false
-            });
+            this.JebelBarkal_PrepareEntitiesForRandomAttack(groupEntities);
+            this.JebelBarkal_SendEntitiesToRandomAttack(playerEntities, patrolPoints, groupEntities, false);
         }
     }
 
@@ -768,6 +880,36 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 			"translateMessage": true
 		});
 };
+
+Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
+{
+    for (let ent of groupEntities)
+        TriggerHelper.SetUnitStance(ent, "aggressive");
+   
+    TriggerHelper.SetUnitFormation(jebelBarkal_playerID, groupEntities, pickRandom(jebelBarkal_formations));
+}
+
+
+Trigger.prototype.JebelBarkal_SendEntitiesToRandomAttack = function(playerEntities, patrolPoints, groupEntities, queued)
+{
+    let targets = playerEntities.reduce((allTargets, playerEnts) =>
+        allTargets.concat(shuffleArray(TriggerHelper.MatchEntitiesByClass(playerEnts, "Unit+!Ship")).slice(0, 10)), []);
+    if (!targets.length)
+        return;
+
+    let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
+    ProcessCommand(jebelBarkal_playerID, {
+        "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
+        "entities": groupEntities,
+        "x": pos.x,
+        "z": pos.y,
+        "targetClasses": {
+            "attack": "Unit+!Ship"
+        },
+        "queued": queued,
+        "allowCapture": false
+    });
+}
 
 Trigger.prototype.JebelBarkal_StartAttackTimer = function(delay)
 {
@@ -896,16 +1038,70 @@ Trigger.prototype.JebelBarkal_OwnershipChange_DetectWin = function(data)
         return;
     
     // Game is won if all attack production entities are destroyed
-    let classes = ["Wonder", "Fortress", "Temple", "Stable", "Barracks", "Embassy", "Arsenal", "ElephantStable"];
-    if (0 == TriggerHelper.GetPlayerEntitiesByClass(jebelBarkal_playerID, classes).length)
+    if (0 == this.jebelBarkal_attackerGroupSpawnPoints.length)
     {
         Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
             "message": "Napata wurde besiegt!"
         });
+        TriggerHelper.SetPlayerWon(
+            1,
+            n => markForPluralTranslation(
+                "%(lastPlayer)s haben gewonnen (Napata wurde besiegt).",
+                "%(players)s und %(lastPlayer)s haben gewonnen (Napata wurde besiegt).",
+                n),
+            n => markForPluralTranslation(
+                "%(lastPlayer)s wurden besiegt (Napatas Dampfwalze).",
+                "%(players)s und %(lastPlayer)s wurden besiegt (Napatas Dampfwalze).",
+                n));
         this.jebelBarkal_won = true;
     }
 }
- 
+
+Trigger.prototype.JebelBarkal_OwnershipChange_RebuildCity = function(data)
+{
+    
+    if (-1 == this.jebelBarkal_attackerGroupSpawnPoints.indexOf(data.entity))
+        return;
+    if (-1 == this.jebelBarkal_patrolGroupSpawnPoints.indexOf(data.entity))
+        return;
+    
+    const temple = "structures/kush/temple";
+    const wonder = "structures/ptol/wonder";
+    const fortress = "structures/kush/fortress";
+    const blemmy = "structures/kush/camp_blemmye";
+    const noba = "structures/kush/camp_noba";
+    const civic = "structures/kush/civil_centre";
+    const barrack = "structures/kush/barracks";
+    const stable = "structures/kush/stable";
+    const elephants = "structures/kush/elephant_stable";
+    const arsenal = "structures/kush/arsenal";
+    const rebuild_templates = [
+        wonder,
+        fortress, fortress,
+        temple, temple, temple,
+        stable, stable, stable, stable,
+        barrack, barrack, barrack, barrack,
+        blemmy, blemmy,
+        noba, noba,
+        arsenal, arsenal,
+        elephants, elephants
+    ];
+    
+    let rebuildCitySpeed = 
+    [
+        [0, 1],             /* Very easy */
+        [0, 0, 1, 1, 2],    /* Easy */
+        [0, 1, 1, 2, 2],    /* Medium */
+        [1, 1, 2, 2, 2],    /* Hard */
+        [1, 2, 2, 2, 3],    /* Very hard */
+    ];
+        
+    /* For every destructed building, try to construct a few new */
+    let nNewBuildings = pickRandom(rebuildCitySpeed[this.GetDifficulty() - 1]);
+    for (let i = 0; i < nNewBuildings; i ++)
+        this.JebelBarkal_rebuildCity_PlaceAndConstruct(pickRandom(rebuild_templates), 20);
+}
+
 Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 {
 	if (data.from != 0) /* Only pass if Gaia units died */
@@ -914,6 +1110,7 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
     this.JebelBarkal_OwnershipChange_DetectWin(data);
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
+    this.JebelBarkal_OwnershipChange_RebuildCity(data);
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
 };
 

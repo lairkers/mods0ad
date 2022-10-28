@@ -1453,15 +1453,18 @@ createObjectGroupsByAreas(
 	scaleByMapSize(1, 6) / 3 * getDifficulty(),
 	250,
 	[areaHilltop]);
-	
-g_Map.log("Placing siege engines around the city wall");                                                                /* Added ranged sieges at wall here */
-createObjectGroupsByAreas(
-	new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 1)], true, clSoldier),
-	0,
-	new StaticConstraint([]),
-	scaleByMapSize(1, 6) * 6 * getDifficulty(),
-	250,
-	[areaWallSiege]);
+
+if (placeNapataWall)
+{		
+    g_Map.log("Placing siege engines around the city wall");                                                                /* Added ranged sieges at wall here */
+    createObjectGroupsByAreas(
+        new SimpleGroup([new RandomObject(oPtolSiegeWall, 1, 1, 1, 1)], true, clSoldier),
+        0,
+        new StaticConstraint([]),
+        scaleByMapSize(1, 6) * 6 * getDifficulty(),
+        250,
+        [areaWallSiege]);
+}
 
 g_Map.log("Placing ships in the water");                                                                                /* Added ships in river to prevent fishing */
 createObjectGroupsByAreas(

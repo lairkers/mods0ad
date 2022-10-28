@@ -28,7 +28,7 @@ fi
 ##############################################################################
 for FILE in "${FILES[@]}"
 do
-    wget -P $INSTALLATION_PATH $SERVER_HTTP/$FILE
+    wget -P $INSTALLATION_PATH -O $INSTALLATION_PATH/$FILE $SERVER_HTTP/$FILE
 done
 
 echo "Done. Enjoy."

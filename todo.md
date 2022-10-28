@@ -8,13 +8,6 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
 random houses.
 
-## Rebuilding city
-If a building is destroyed, a citizen (or mutiple?) are spawned to rebuild it.
-To be clearified: Same location? => no, let's place the replacement anywhere on the map? That would be funny.
-
-## [low prio] Flooding defense upgrade
-Counter attack a.k.a. flooding defense is only executed after 1, 2 or 3 napata attack cycles
-
 ## [low prio] Apocalyptic riders upgrade
 There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
 player.
@@ -22,6 +15,9 @@ player.
 ## [low prio] Randomizer
 All of the addons may be selected at game start so that the players must find out where defense
 is needed at most.
+
+## [minor] [discarded] Flooding defense upgrade
+Counter attack a.k.a. flooding defense is only executed after 1, 2 or 3 napata attack cycles
 
 ## [minor] [discarded] Patroling ships
 Small upgrade to guard the river. Alternatively the ships are further away from the coast to allow
