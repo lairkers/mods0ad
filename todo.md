@@ -1,5 +1,12 @@
 # Ideas for further development
 
+## Bugfixes
+- If gaia claims walls from Iberians after AI's defeat, this crashes the escalating defense detection.
+    Fix: Store which of the walls are part of initial Gaia city. On OwnershipChange, remove it and count DefCon.
+    
+## Timing based rebuilding city
+After a trigger (time or DefCon or time after DefCon) there are rebuilding troops spawned periodically.
+
 ## Pirates / Ceasar
 After a while (40 min?) pirates attack from river side. They do not have siege units, as this may be too hard
 if you have all your defense in the north.

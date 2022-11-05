@@ -1471,7 +1471,7 @@ createObjectGroupsByAreas(
 	new SimpleGroup([new RandomObject(oKushPtolShip, 1, 1, 1, 4)], true, clSoldier),
 	0,
 	new StaticConstraint([avoidClasses(clFertileLand, 4)]),
-	scaleByMapSize(1, 5) / 3 * getDifficulty(),
+	scaleByMapSize(1, 3) / 3 * getDifficulty(),
 	250,
 	[areaWater]);
 

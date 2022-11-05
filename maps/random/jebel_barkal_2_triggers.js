@@ -63,10 +63,10 @@ var jebelBarkal_formations = [
 /**
  *  Balancing helper function.
  *
- *  @returns min0 value at the beginning of the game, min60 after an hour of gametime or longer and
- *  a proportionate number between these two values before the first hour is reached.
+ *  @returns min0 value at the beginning of the game, min60 after 50 minutes of gametime or longer and
+ *  a proportionate number between these two values before the first 50 minutes are reached.
  */
-var scaleByTime = (minCurrent, min0, min60) => min0 + (min60 - min0) * Math.min(1, minCurrent / 60);
+var scaleByTime = (minCurrent, min0, min50) => min0 + (min50 - min0) * Math.min(1, minCurrent / 50);
 
 /**
  *  @returns min value at map size 128 (very small), max at map size 512 and
@@ -186,7 +186,7 @@ var jebelBarkal_buildingGarrison = difficulty => [
 	},
 	{
 		"buildingClasses": ["Stable"],
-		"unitTemplates": jebelBarkal_templates.champion_cavalry,
+		"unitTemplates": [...jebelBarkal_templates.citizenSoldier_cavalry, ...jebelBarkal_templates.champion_cavalry],
 		"capacityRatio": 1
 
 	},
@@ -670,7 +670,9 @@ Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entG
         return;
 
     let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
-    let templateCompositions = TriggerHelper.RandomTemplateComposition(templates, randIntInclusive(0, Math.floor(cmpSpace * capacityPercent)));
+    let numUnitsMax = Math.floor(cmpSpace * capacityPercent);
+    let numUnits = cmpGarrisonHolder ? numUnitsMax : randIntInclusive(0, numUnitsMax);
+    let templateCompositions = TriggerHelper.RandomTemplateComposition(templates, numUnits);
 
     if (cmpGarrisonHolder)
         for (let template in templateCompositions)

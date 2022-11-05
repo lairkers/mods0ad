@@ -16,7 +16,7 @@ The purpose of this repo is to develop custom maps for 0.A.D. (see https://wildf
 ## Usage
 
 Step 1: Adapt the code. Example: jebel_barkal_2.js contains the code to create the map,
-jebel_barkal_2_trigger.js contains the code which is executed _during_ the game.
+jebel_barkal_2_triggers.js contains the code which is executed _during_ the game.
 The language is javascript, thus the extension '.js'.
 
 Step 2: Test the code. You may choose:
