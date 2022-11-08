@@ -600,7 +600,7 @@ const areaHilltop = createArea(
 Engine.SetProgress(50);
 
 
-function placePlayerBaseStartingAnimal(args)
+function JebelBarkal_placePlayerBaseStartingAnimal(args)
 {
 	for (let i = 0; i < args.groupCount; ++i)
 	{
@@ -702,7 +702,7 @@ for (let i = 0; i < numPlayers; ++i)
             [1, 2],                                                                     /* Hard */
             [1],                                                                        /* Very hard */
         ];
-    placePlayerBaseStartingAnimal({                                                     /* Place additional Elephants for breakfast (early game) */
+    JebelBarkal_placePlayerBaseStartingAnimal({                                                     /* Place additional Elephants for breakfast (early game) */
             "basePosition": playerPosition[i],
             "BaseResourceClass": clBaseResource,
             "baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),

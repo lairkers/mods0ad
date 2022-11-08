@@ -6,6 +6,7 @@
     
 ## Timing based rebuilding city
 After a trigger (time or DefCon or time after DefCon) there are rebuilding troops spawned periodically.
+Goal: avoid the players to wait too long until they raid the city.
 
 ## Pirates / Ceasar
 After a while (40 min?) pirates attack from river side. They do not have siege units, as this may be too hard
