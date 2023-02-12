@@ -74,7 +74,7 @@ release:
 
 
 # Download from FTP server
-update:
+update download:
 	$(UPDATER_UNIX)
 
 # Cleanup

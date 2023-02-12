@@ -551,6 +551,7 @@ Trigger.prototype.JebelBarkal_Init = function()
 
 Trigger.prototype.JebelBarkal_StructureBuilt = function(data)
 {
+    this.debugLog("JebelBarkal_StructureBuilt Start"); /* FIXME */
     let index = this.JebelBarkal_rebuildCity_unfinishedBuildings.indexOf(data.foundation);
     if (index > -1)
     {
@@ -569,6 +570,7 @@ Trigger.prototype.JebelBarkal_StructureBuilt = function(data)
             }
         }
     }
+    this.debugLog("JebelBarkal_StructureBuilt End"); /* FIXME */
 }
 
 Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
@@ -611,9 +613,9 @@ Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
 		"Wonder");
         
     // Save number of walls to detect if 3 are broken
-    this.jebelBarkal_escalatingDefense_numOfWalls = TriggerHelper.GetPlayerEntitiesByClass(
+    this.jebelBarkal_escalatingDefense_walls = TriggerHelper.GetPlayerEntitiesByClass(
         jebelBarkal_playerID,
-        "Wall").length;
+        "Wall");
     this.jebelBarkal_escalatingDefense_started = false;
     this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls = 0;
     
@@ -649,6 +651,7 @@ Trigger.prototype.JebelBarkal_StartRitualAnimations = function()
 
 Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 {
+    this.debugLog("JebelBarkal_UpdateRitualAnimations Start"); /* FIXME */
 	for (let ent of this.jebelBarkal_ritualHealers)
 	{
 		let cmpUnitAI = Engine.QueryInterface(ent, IID_UnitAI);
@@ -659,7 +662,7 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 		if (cmpVisual && jebelBarkal_ritualAnimations.indexOf(cmpVisual.GetAnimationName()) == -1)
 			cmpVisual.SelectAnimation(pickRandom(jebelBarkal_ritualAnimations), false, 1, "");
 	}
-    
+    this.debugLog("JebelBarkal_UpdateRitualAnimations End"); /* FIXME */
 };
 
 Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entGarrTurrHolder, templates, capacityPercent)
@@ -705,6 +708,7 @@ Trigger.prototype.JebelBarkal_GarrisonBuildings = function()
  */
 Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 {
+    this.debugLog("JebelBarkal_SpawnCityPatrolGroups Start"); /* FIXME */
 	if (!this.jebelBarkal_patrolGroupSpawnPoints.length)
 		return;
 
@@ -723,6 +727,7 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
         next_time = next_time / 3;
     
     this.DoAfterDelay(next_time, "JebelBarkal_SpawnCityPatrolGroups", {});
+    this.debugLog("JebelBarkal_SpawnCityPatrolGroups End"); /* FIXME */
 };
 
 Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups_raw = function(time, groupCount)
@@ -786,6 +791,7 @@ Trigger.prototype.JebelBarkal_SpawnTemplates = function(spawnEnt, templateCounts
  */
 Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 {
+    this.debugLog("JebelBarkal_SpawnAttackerGroups Start"); /* FIXME */
 	if (!this.jebelBarkal_attackerGroupSpawnPoints)
 		return;
 
@@ -881,6 +887,7 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 			"message": markForTranslation("Napata is attacking!"),
 			"translateMessage": true
 		});
+    this.debugLog("JebelBarkal_SpawnAttackerGroups End"); /* FIXME */
 };
 
 Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
@@ -932,7 +939,6 @@ Trigger.prototype.JebelBarkal_StartAttackTimer = function(delay)
  */
 Trigger.prototype.JebelBarkal_OwnershipChange_KeepTrackOfUnits = function(data)
 {
-
 	let trackedEntityArrays = [
 		this.jebelBarkal_heroes,
 		this.jebelBarkal_ritualHealers,
@@ -1009,9 +1015,17 @@ Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function
     if (this.jebelBarkal_escalatingDefense_started)
         return;
     
-    let numDestroyedWalls = this.jebelBarkal_escalatingDefense_numOfWalls - TriggerHelper.GetPlayerEntitiesByClass(
-        jebelBarkal_playerID,
-        "Wall").length;
+    /* Check if the lost entity is one of the initial walls */
+    if (!this.jebelBarkal_escalatingDefense_walls.includes(data.entity))
+        return;
+    
+    let currentWalls = TriggerHelper.GetPlayerEntitiesByClass(jebelBarkal_playerID, "Wall");
+    let numDestroyedWalls = 0
+    for (let w of this.jebelBarkal_escalatingDefense_walls)
+    {
+        if (!currentWalls.includes(w))
+            numDestroyedWalls += 1
+    }
         
     if ((this.jebelBarkal_escalatingDefense_lastNumDestroyedWalls != numDestroyedWalls) && (numDestroyedWalls <= 3))
         Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
@@ -1109,11 +1123,13 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
     
+    this.debugLog("JebelBarkal_OwnershipChange Start"); /* FIXME */
     this.JebelBarkal_OwnershipChange_DetectWin(data);
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
     this.JebelBarkal_OwnershipChange_RebuildCity(data);
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
+    this.debugLog("JebelBarkal_OwnershipChange End"); /* FIXME */
 };
 
 

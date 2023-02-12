@@ -424,22 +424,71 @@ paintRiver({
 Engine.SetProgress(30);
 
 g_Map.log("Computing player locations");
-const playerIDs = sortAllPlayers();
-let numOfTeams = Array.from(new Set(playerIDs.map(getPlayerTeam))).length;                                                                            /* Always sorted Teams, either left or right */
+let playerIDs = sortAllPlayers();
+let teamIDs = playerIDs.map(getPlayerTeam);
+let teamSizes = {};
+for (let n of teamIDs) {
+    teamSizes[n] = teamSizes[n] ? teamSizes[n] + 1 : 1;
+}
+let biggestTeamID = 0;
+let biggestTeamSize = 0;
+for (let teamID of Object.keys(teamSizes)) {
+    if (biggestTeamSize < teamSizes[teamID])
+    {
+        biggestTeamID = teamID;
+        biggestTeamSize = teamSizes[teamID];
+    }
+}
+let biggestTeamPlayerIDs = [];
+for (let i = 0; i < playerIDs.length - 1; i = i + 1) {
+    if (teamIDs[i] == biggestTeamID) {
+        biggestTeamPlayerIDs = biggestTeamPlayerIDs.concat([playerIDs[i]]);
+    }
+}
+let centerPlayerID = 0;
+let centerPlayerID_index = 0;
+let numOfTeams = Array.from(new Set(playerIDs.map(getPlayerTeam))).length;                    /* Always sorted Teams, either left or right */
 let mapAngle = riverAngle - 0.5 * Math.PI;
 let startAngle = 0.05 * Math.PI;
 let endAngle = 0.55 * Math.PI;
-let playerPosition = null;
+let centerAngle = 0.05 * Math.PI;
+let playerPosition = [];
+let centerPlayerPosition = [];
+
+/* Center player? */
+let doCenterPlayer = (playerIDs.length >= 3) && (pickRandom([true, false]))
+if (doCenterPlayer)
+{
+    centerPlayerID = pickRandom(biggestTeamPlayerIDs);
+    centerPlayerID_index = playerIDs.indexOf(centerPlayerID);
+    playerIDs.splice(centerPlayerID_index, 1)
+    centerPlayerPosition = playerPlacementArc([centerPlayerID], mapCenter, fractionToTiles(0.28), mapAngle - centerAngle, mapAngle + centerAngle)[0];
+}
+
+/* All other players */
 if (numOfTeams == 1)
 {
-    if (pickRandom([true, false]))
-        playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle + startAngle, mapAngle + endAngle);
-    else
-        playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle - startAngle, mapAngle - endAngle);
+    if (pickRandom([true, true, false])) /* all on the same side */
+    {
+        if (pickRandom([true, false])) /* left or right */
+            playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle + startAngle, mapAngle + endAngle);
+        else
+            playerPosition = playerPlacementArc(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle - startAngle, mapAngle - endAngle);
+    }
+    else /* split left / right */
+    {
+        playerPosition = playerPlacementArcs(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle, startAngle, endAngle);
+    }
 }
 else
 {
     playerPosition = playerPlacementArcs(playerIDs, mapCenter, fractionToTiles(0.38), mapAngle, startAngle, endAngle);
+}
+
+if (doCenterPlayer)
+{
+    playerIDs.splice(centerPlayerID_index, 0, centerPlayerID);
+    playerPosition.splice(centerPlayerID_index, 0, centerPlayerPosition);
 }
 
 if (!isNomad())
@@ -670,7 +719,7 @@ for (let i = 0; i < numPlayers; ++i)
 		},
 		"Trees": {
 			"template": isDesert ? oAcacia : pickRandom(oPalms),
-			"count": isDesert ? scaleByMapSize(5, 10) : scaleByMapSize(15, 30)
+			"count": isDesert ? scaleByMapSize(10, 20) : scaleByMapSize(30, 60)
 		},
 		"Treasures": {
 			"types":
@@ -700,7 +749,7 @@ for (let i = 0; i < numPlayers; ++i)
             [1, 1, 1, 1, 1, 2, 2, 2, 3, 3],                                             /* Easy */
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3],               /* Medium */
             [1, 2],                                                                     /* Hard */
-            [1],                                                                        /* Very hard */
+            [0, 1, 1, 1, 1, 1, 2, 2],                                                   /* Very hard */
         ];
     JebelBarkal_placePlayerBaseStartingAnimal({                                                     /* Place additional Elephants for breakfast (early game) */
             "basePosition": playerPosition[i],
@@ -1247,7 +1296,7 @@ createForests(
 	[tForestFloorFertile, tForestFloorFertile, tForestFloorFertile, pForestPalms, pForestPalms],
 	[stayFertileLand, avoidClasses(clForest, 15), new StaticConstraint([avoidClasses(clWater, 2), avoidCollisions])],
 	clForest,
-	scaleByMapSize(250, 2000));
+	scaleByMapSize(350, 3000));
 
 g_Map.log("Creating mines");
 const avoidCollisionsMines = [
@@ -1470,7 +1519,7 @@ g_Map.log("Placing ships in the water");                                        
 createObjectGroupsByAreas(
 	new SimpleGroup([new RandomObject(oKushPtolShip, 1, 1, 1, 4)], true, clSoldier),
 	0,
-	new StaticConstraint([avoidClasses(clFertileLand, 4)]),
+	new StaticConstraint([avoidClasses(clFertileLand, 5)]),
 	scaleByMapSize(1, 3) / 3 * getDifficulty(),
 	250,
 	[areaWater]);
