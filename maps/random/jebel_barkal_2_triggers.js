@@ -22,7 +22,7 @@ var jebelBarkal_rank = "Basic";
 /**
  * Limit the total amount of gaia units spawned for performance reasons.
  */
-var jebelBarkal_maxPopulation = 8 * 100;
+var jebelBarkal_maxPopulation = 10 * 100;
 
 /**
  * These are the templates spawned at the gamestart and during the game.
@@ -551,7 +551,6 @@ Trigger.prototype.JebelBarkal_Init = function()
 
 Trigger.prototype.JebelBarkal_StructureBuilt = function(data)
 {
-    this.debugLog("JebelBarkal_StructureBuilt Start"); /* FIXME */
     let index = this.JebelBarkal_rebuildCity_unfinishedBuildings.indexOf(data.foundation);
     if (index > -1)
     {
@@ -570,7 +569,6 @@ Trigger.prototype.JebelBarkal_StructureBuilt = function(data)
             }
         }
     }
-    this.debugLog("JebelBarkal_StructureBuilt End"); /* FIXME */
 }
 
 Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
@@ -651,7 +649,6 @@ Trigger.prototype.JebelBarkal_StartRitualAnimations = function()
 
 Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 {
-    this.debugLog("JebelBarkal_UpdateRitualAnimations Start"); /* FIXME */
 	for (let ent of this.jebelBarkal_ritualHealers)
 	{
 		let cmpUnitAI = Engine.QueryInterface(ent, IID_UnitAI);
@@ -662,7 +659,33 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 		if (cmpVisual && jebelBarkal_ritualAnimations.indexOf(cmpVisual.GetAnimationName()) == -1)
 			cmpVisual.SelectAnimation(pickRandom(jebelBarkal_ritualAnimations), false, 1, "");
 	}
-    this.debugLog("JebelBarkal_UpdateRitualAnimations End"); /* FIXME */
+    
+    // FIXME: Abused to periodically restart attack-walk of idle attacking units
+    this.debugLog("lazy unit start");
+    
+    let activePlayers = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers();
+    let playerEntities = activePlayers.map(playerID =>
+        TriggerHelper.GetEntitiesByPlayer(playerID).filter(TriggerHelper.IsInWorld));
+    let patrolPoints = this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol);
+    
+    this.debugLog("lazy unit general setup done");
+    
+    let groupEntities = [];
+    for (let ent of this.jebelBarkal_attackerUnits)
+	{
+		let cmpUnitAI = Engine.QueryInterface(ent, IID_UnitAI);
+		if (!cmpUnitAI || !cmpUnitAI.GetCurrentState().endsWith(".IDLE"))
+			continue;
+        
+        groupEntities.push(ent);
+        this.debugLog("Idle = " + ent + uneval(cmpUnitAI))
+	}
+    
+    this.debugLog("lazy unit units found");
+    
+    this.JebelBarkal_SendEntitiesToRandomAttack(playerEntities, patrolPoints, groupEntities, false);
+    
+    this.debugLog("lazy unit units sent to attack");
 };
 
 Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entGarrTurrHolder, templates, capacityPercent)
@@ -708,7 +731,6 @@ Trigger.prototype.JebelBarkal_GarrisonBuildings = function()
  */
 Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
 {
-    this.debugLog("JebelBarkal_SpawnCityPatrolGroups Start"); /* FIXME */
 	if (!this.jebelBarkal_patrolGroupSpawnPoints.length)
 		return;
 
@@ -727,7 +749,6 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups = function()
         next_time = next_time / 3;
     
     this.DoAfterDelay(next_time, "JebelBarkal_SpawnCityPatrolGroups", {});
-    this.debugLog("JebelBarkal_SpawnCityPatrolGroups End"); /* FIXME */
 };
 
 Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups_raw = function(time, groupCount)
@@ -791,7 +812,6 @@ Trigger.prototype.JebelBarkal_SpawnTemplates = function(spawnEnt, templateCounts
  */
 Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 {
-    this.debugLog("JebelBarkal_SpawnAttackerGroups Start"); /* FIXME */
 	if (!this.jebelBarkal_attackerGroupSpawnPoints)
 		return;
 
@@ -887,7 +907,6 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 			"message": markForTranslation("Napata is attacking!"),
 			"translateMessage": true
 		});
-    this.debugLog("JebelBarkal_SpawnAttackerGroups End"); /* FIXME */
 };
 
 Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
@@ -908,7 +927,7 @@ Trigger.prototype.JebelBarkal_SendEntitiesToRandomAttack = function(playerEntiti
 
     let pos = TriggerHelper.GetEntityPosition2D(pickRandom(randBool(0.9) ? targets : patrolPoints));
     ProcessCommand(jebelBarkal_playerID, {
-        "type": pickRandom(["attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
+        "type": pickRandom(["walk", "attack-walk", "patrol", "patrol", "patrol"]),  // Some units shall ignore the player's troops in Napatas city
         "entities": groupEntities,
         "x": pos.x,
         "z": pos.y,
@@ -1123,13 +1142,11 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
     
-    this.debugLog("JebelBarkal_OwnershipChange Start"); /* FIXME */
     this.JebelBarkal_OwnershipChange_DetectWin(data);
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
     this.JebelBarkal_OwnershipChange_RebuildCity(data);
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
-    this.debugLog("JebelBarkal_OwnershipChange End"); /* FIXME */
 };
 
 
