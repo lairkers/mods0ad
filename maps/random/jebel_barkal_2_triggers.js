@@ -22,7 +22,7 @@ var jebelBarkal_rank = "Basic";
 /**
  * Limit the total amount of gaia units spawned for performance reasons.
  */
-var jebelBarkal_maxPopulation = 10 * 100;
+var jebelBarkal_maxPopulation = 1200;
 
 /**
  * These are the templates spawned at the gamestart and during the game.
@@ -63,10 +63,10 @@ var jebelBarkal_formations = [
 /**
  *  Balancing helper function.
  *
- *  @returns min0 value at the beginning of the game, min60 after 50 minutes of gametime or longer and
- *  a proportionate number between these two values before the first 50 minutes are reached.
+ *  @returns min0 value at the beginning of the game, min60 after 60 minutes of gametime or longer and
+ *  a proportionate number between these two values before the first 60 minutes are reached.
  */
-var scaleByTime = (minCurrent, min0, min50) => min0 + (min50 - min0) * Math.min(1, minCurrent / 50);
+var scaleByTime = (minCurrent, min0, min60) => min0 + (min60 - min0) * Math.min(1, minCurrent / 60);
 
 /**
  *  @returns min value at map size 128 (very small), max at map size 512 and
@@ -124,10 +124,18 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
 	(isNomad ?  9 - difficulty : 0);
 
 /**
+ * Simulate bots which die in one of the attack waves, so that no Bots are needed for higher attack difficulty while defeating lag
+ */
+var jebelBarkal_simulateDeadBots_numBots = 1;
+var jebelBarkal_simulateDeadBots_numDeadBots = 0;
+var jebelBarkal_simulateDeadBots_attackWaveNo = 0;
+var jebelBarkal_simulateDeadBots_probabilityOfDying = [0, 0.25, 0.6, 0.9, 1]; // needs 0 as start, 1 as end
+
+/**
  * Account for varying mapsizes and number of players when spawning attackers.
  */
 var jebelBarkal_attackerGroup_sizeFactor = (numPlayers, numInitialSpawnPoints, difficulty) =>
-	numPlayers / numInitialSpawnPoints * (difficulty + 2) * 0.85;                                           /* Change here for bigger attack groups */
+	(numPlayers + jebelBarkal_simulateDeadBots_numDeadBots) / numInitialSpawnPoints * (difficulty + 2) * 0.85;               /* Change here for bigger attack groups */
 
 /**
  * Assume gaia to be the native kushite player.
@@ -661,14 +669,15 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
 	}
     
     // FIXME: Abused to periodically restart attack-walk of idle attacking units
-    this.debugLog("lazy unit start");
-    
+    this.JebelBarkal_RestartAttackWalk();
+};
+
+Trigger.prototype.JebelBarkal_RestartAttackWalk = function()
+{
     let activePlayers = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers();
     let playerEntities = activePlayers.map(playerID =>
         TriggerHelper.GetEntitiesByPlayer(playerID).filter(TriggerHelper.IsInWorld));
     let patrolPoints = this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol);
-    
-    this.debugLog("lazy unit general setup done");
     
     let groupEntities = [];
     for (let ent of this.jebelBarkal_attackerUnits)
@@ -681,12 +690,8 @@ Trigger.prototype.JebelBarkal_UpdateRitualAnimations = function()
         this.debugLog("Idle = " + ent + uneval(cmpUnitAI))
 	}
     
-    this.debugLog("lazy unit units found");
-    
     this.JebelBarkal_SendEntitiesToRandomAttack(playerEntities, patrolPoints, groupEntities, false);
-    
-    this.debugLog("lazy unit units sent to attack");
-};
+}
 
 Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entGarrTurrHolder, templates, capacityPercent)
 {
@@ -825,7 +830,8 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 		TriggerHelper.GetEntitiesByPlayer(playerID).filter(TriggerHelper.IsInWorld));
 
 	let patrolPoints = this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol);
-
+    
+    this.jebelBarkal_simulateDeadBots_updateNumDeadBots();
 	let groupSizeFactor = jebelBarkal_attackerGroup_sizeFactor(
 		activePlayers.length,
 		this.numInitialSpawnPoints,
@@ -908,6 +914,32 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 			"translateMessage": true
 		});
 };
+
+/**
+ * Simulate bots which die in one of the attack waves, so that no Bots are needed for higher attack difficulty while defeating lag
+ */
+Trigger.prototype.jebelBarkal_simulateDeadBots_updateNumDeadBots = function()
+{
+    let numAliveBots = jebelBarkal_simulateDeadBots_numBots - jebelBarkal_simulateDeadBots_numDeadBots;
+    
+    // Sanity check
+    if (jebelBarkal_simulateDeadBots_attackWaveNo >= jebelBarkal_simulateDeadBots_probabilityOfDying.length) {
+        return;
+    }
+    
+    for (let i = 0; i < numAliveBots; i ++) {
+        let prob = jebelBarkal_simulateDeadBots_probabilityOfDying[jebelBarkal_simulateDeadBots_attackWaveNo];
+        // Check if bot died in previous attack
+        if (randFloat(0, 1) < prob) {
+            jebelBarkal_simulateDeadBots_numDeadBots = jebelBarkal_simulateDeadBots_numDeadBots + 1;
+            this.debugLog("     BOT DIED       ");
+        } else {
+            this.debugLog("     BOT SURVIVED       ");
+        }
+    }
+
+    jebelBarkal_simulateDeadBots_attackWaveNo = jebelBarkal_simulateDeadBots_attackWaveNo + 1;
+}
 
 Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
 {
