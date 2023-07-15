@@ -3,16 +3,16 @@
 ##############################################################################
 # Important: Set this first to tell the script where to install the map files
 # Example:
-#   INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps/random
+#   INSTALLATION_PATH=~/.local/share/0ad/mods
 ##############################################################################
-INSTALLATION_PATH=~/.local/share/0ad/mods/user/maps/random
+INSTALLATION_PATH=~/.local/share/0ad/mods
 
 
 ##############################################################################
 # Server address and file names
 ##############################################################################
-SERVER_HTTP=http://elgee.bplaced.net/maps0ad/maps/
-FILES=(jebel_barkal_2.js jebel_barkal_2.json jebel_barkal_2.pmp jebel_barkal_2_triggers.js)
+SERVER_HTTP=http://elgee.bplaced.net/mods0ad/mods
+FILES=(jebel_barkal_extreme.zip petra_lag_fix.zip)
 
 
 ##############################################################################
@@ -28,7 +28,8 @@ fi
 ##############################################################################
 for FILE in "${FILES[@]}"
 do
-    wget -P $INSTALLATION_PATH -O $INSTALLATION_PATH/$FILE $SERVER_HTTP/$FILE
+    mkdir -p $INSTALLATION_PATH/$(basename $FILE .zip)
+    wget -P $INSTALLATION_PATH -O $INSTALLATION_PATH/$(basename $FILE .zip)/$FILE $SERVER_HTTP/$FILE
 done
 
 echo "Done. Enjoy."

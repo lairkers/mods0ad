@@ -1,0 +1,7 @@
+{
+	"name": "petra_lag_fix",
+	"version": "0.0.1",
+	"label": "Fix Petra AI lag",
+	"description": "Fix Network lag for Petra AI after its death. Not compatible with other network players without this mod.",
+	"dependencies": ["0ad=0.0.26"]
+}

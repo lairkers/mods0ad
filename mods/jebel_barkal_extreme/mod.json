@@ -1,0 +1,7 @@
+{
+	"name": "jebel_barkal_extreme",
+	"version": "1.0.0",
+	"label": "Modded Jebel Barkal map",
+	"description": "Modded Jebel Barkal map. Increased difficulty",
+	"dependencies": ["0ad"]
+}
