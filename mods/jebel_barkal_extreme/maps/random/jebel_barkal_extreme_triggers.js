@@ -126,7 +126,7 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
 /**
  * Simulate bots which die in one of the attack waves, so that no Bots are needed for higher attack difficulty while defeating lag
  */
-var jebelBarkal_simulateDeadBots_numBots = 1;
+var jebelBarkal_simulateDeadBots_numBots = 0;
 var jebelBarkal_simulateDeadBots_numDeadBots = 0;
 var jebelBarkal_simulateDeadBots_attackWaveNo = 0;
 var jebelBarkal_simulateDeadBots_probabilityOfDying = [0, 0.25, 0.6, 0.9, 1]; // needs 0 as start, 1 as end
