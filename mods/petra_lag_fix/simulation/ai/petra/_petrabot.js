@@ -88,9 +88,9 @@ PETRA.PetraBot.prototype.CustomInit = function(gameState)
 
 PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
 {
-	if ((this.gameFinished) || (this.gameState.getOwnEntities().length == 0))
+	if (this.gameFinished || this.gameState.getOwnEntities().length == 0)
 		return;
-
+    
 	for (let i in this.events)
 	{
 		if (i == "AIMetadata")   // not used inside petra

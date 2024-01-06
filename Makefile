@@ -48,25 +48,23 @@ RELEASE_SERVER_MODS := $(RELEASE_SERVER_ROOT)/$(RELEASE_SERVER_DIR)
 $(ZIP_DIR):
 	$(MKDIR) $@
 
-$(ZIP_DIR)/%: $(shell find $(MOD_DIR)/$(%) -type f) | $(ZIP_DIR)
+$(ZIP_DIR)/%.zip: $(shell find $(MOD_ROOT)/$(%) -type f) | $(ZIP_DIR)
 	$(ZIP) a -r -tzip $@ ./$(MOD_ROOT)/$(notdir $(@:.zip=))/*
 
-zip: $(MOD_ZIPPED)
-zipall: $(MOD_ALL_ZIPPED)
+zip: $(MOD_ALL_ZIPPED)
 
 # Installation - TODO: Check if mod.json should be deleted here
 $(MOD_INSTALL_DIR)/%: $(ZIP_DIR)/$$(notdir $$@)
 	$(MKDIR) $(@D) && $(CP) $< $@
 
-install: $(MOD_INSTALLED)
-installall: $(MOD_ALL_INSTALLED)
+install: $(MOD_ALL_INSTALLED)
 
 
 # Testing the map generation
 $(TEST_ROOT):
 	$(MKDIR) $@
 
-$(TEST_LOG): $(MOD_INSTALLED)
+$(TEST_LOG): $(MOD_ALL_INSTALLED)
 	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY) -autostart-nonvisual -quickstart || true
 	$(CP) $(0AD_LOG) $@
 
@@ -74,12 +72,12 @@ testlog: $(TEST_LOG)
 
 
 # Unreveal map (there was no autostart-uncover)
-view: $(MOD_INSTALLED)
+view: $(MOD_ALL_INSTALLED)
 	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY)
 
 
 # Playing (and checking if map actually looks correct)
-play: $(MOD_INSTALLED)
+play: $(MOD_ALL_INSTALLED)
 	$(0AD) $(0AD_FLAGS)
 
 

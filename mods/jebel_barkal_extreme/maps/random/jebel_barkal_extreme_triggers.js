@@ -124,18 +124,10 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
 	(isNomad ?  9 - difficulty : 0);
 
 /**
- * Simulate bots which die in one of the attack waves, so that no Bots are needed for higher attack difficulty while defeating lag
- */
-var jebelBarkal_simulateDeadBots_numBots = 0;
-var jebelBarkal_simulateDeadBots_numDeadBots = 0;
-var jebelBarkal_simulateDeadBots_attackWaveNo = 0;
-var jebelBarkal_simulateDeadBots_probabilityOfDying = [0, 0.25, 0.6, 0.9, 1]; // needs 0 as start, 1 as end
-
-/**
  * Account for varying mapsizes and number of players when spawning attackers.
  */
 var jebelBarkal_attackerGroup_sizeFactor = (numPlayers, numInitialSpawnPoints, difficulty) =>
-	(numPlayers + jebelBarkal_simulateDeadBots_numDeadBots) / numInitialSpawnPoints * (difficulty + 2) * 0.85;               /* Change here for bigger attack groups */
+	numPlayers / numInitialSpawnPoints * (difficulty + 2) * 0.85;               /* Change here for bigger attack groups */
 
 /**
  * Assume gaia to be the native kushite player.
@@ -696,11 +688,11 @@ Trigger.prototype.JebelBarkal_RestartAttackWalk = function()
 Trigger.prototype.jebelBarkal_SpawnAndGarrisonAtEntity = function(playerID, entGarrTurrHolder, templates, capacityPercent)
 {
     let cmpGarrisonHolder = Engine.QueryInterface(entGarrTurrHolder, IID_GarrisonHolder);
-    let cmpTurrentHolder = Engine.QueryInterface(entGarrTurrHolder, IID_TurretHolder);
-    if (!cmpGarrisonHolder && !cmpTurrentHolder)
+    let cmpTurretHolder = Engine.QueryInterface(entGarrTurrHolder, IID_TurretHolder);
+    if (!cmpGarrisonHolder && !cmpTurretHolder)
         return;
 
-    let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurrentHolder.GetTurretPoints().length;
+    let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurretHolder.GetTurretPoints().length;
     let numUnitsMax = Math.floor(cmpSpace * capacityPercent);
     let numUnits = cmpGarrisonHolder ? numUnitsMax : randIntInclusive(0, numUnitsMax);
     let templateCompositions = TriggerHelper.RandomTemplateComposition(templates, numUnits);
@@ -831,7 +823,6 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 
 	let patrolPoints = this.GetTriggerPoints(jebelBarkal_attackerGroup_triggerPointPatrol);
     
-    this.jebelBarkal_simulateDeadBots_updateNumDeadBots();
 	let groupSizeFactor = jebelBarkal_attackerGroup_sizeFactor(
 		activePlayers.length,
 		this.numInitialSpawnPoints,
@@ -914,32 +905,6 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 			"translateMessage": true
 		});
 };
-
-/**
- * Simulate bots which die in one of the attack waves, so that no Bots are needed for higher attack difficulty while defeating lag
- */
-Trigger.prototype.jebelBarkal_simulateDeadBots_updateNumDeadBots = function()
-{
-    let numAliveBots = jebelBarkal_simulateDeadBots_numBots - jebelBarkal_simulateDeadBots_numDeadBots;
-    
-    // Sanity check
-    if (jebelBarkal_simulateDeadBots_attackWaveNo >= jebelBarkal_simulateDeadBots_probabilityOfDying.length) {
-        return;
-    }
-    
-    for (let i = 0; i < numAliveBots; i ++) {
-        let prob = jebelBarkal_simulateDeadBots_probabilityOfDying[jebelBarkal_simulateDeadBots_attackWaveNo];
-        // Check if bot died in previous attack
-        if (randFloat(0, 1) < prob) {
-            jebelBarkal_simulateDeadBots_numDeadBots = jebelBarkal_simulateDeadBots_numDeadBots + 1;
-            this.debugLog("     BOT DIED       ");
-        } else {
-            this.debugLog("     BOT SURVIVED       ");
-        }
-    }
-
-    jebelBarkal_simulateDeadBots_attackWaveNo = jebelBarkal_simulateDeadBots_attackWaveNo + 1;
-}
 
 Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
 {
@@ -1173,12 +1138,17 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 {
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
-    
+    this.debugLog('1')
     this.JebelBarkal_OwnershipChange_DetectWin(data);
+    this.debugLog('2')
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
+    this.debugLog('3')
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
+    this.debugLog('4')
     this.JebelBarkal_OwnershipChange_RebuildCity(data);
+    this.debugLog('5')
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
+    this.debugLog('6')
 };
 
 

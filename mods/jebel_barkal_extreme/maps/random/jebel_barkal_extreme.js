@@ -456,7 +456,7 @@ let playerPosition = [];
 let centerPlayerPosition = [];
 
 /* Center player? */
-let doCenterPlayer = (playerIDs.length >= 3) && (pickRandom([true, false]))
+let doCenterPlayer = (playerIDs.length >= 3) && (pickRandom([true, false, false, false, false, false]))
 if (doCenterPlayer)
 {
     centerPlayerID = pickRandom(biggestTeamPlayerIDs);
@@ -538,7 +538,7 @@ for (let i = 0; i < 30; ++i)
 				0.01,
 				Infinity),
 			undefined,
-			avoidClasses(clDesert, 2)));
+			avoidClasses(clDesert, randIntInclusive(2, scaleByMapSize(10, 50)))));
 }
 
 g_Map.log("Creating irrigation canals");
@@ -1641,7 +1641,7 @@ g_Map.log("Creating hawk");
 for (let i = 0; i < scaleByMapSize(0, 2); ++i)
 	g_Map.placeEntityAnywhere(oHawk, 0, mapCenter, randomAngle());
 
-placePlayersNomad(clPlayer, [avoidClasses(clHill, 15, clSoldier, 20, clCity, 15, clWall, 20), avoidCollisionsNomad]);
+placePlayersNomad(clPlayer, [avoidClasses(clDesert, 0, clHill, 15, clSoldier, 20, clCity, 15, clWall, 20), avoidCollisionsNomad]);
 
 setWindAngle(-0.43);
 setWaterHeight(heightWaterLevel + SEA_LEVEL);
