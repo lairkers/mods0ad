@@ -1,13 +1,13 @@
-# Maps for 0.A.D.
+# Mods for 0.A.D.
 
 ## Purpose
 
-The purpose of this repo is to develop custom maps for 0.A.D. (see https://wildfiregames.com/).
+The purpose of this repo is to develop custom maps and other mods for 0.A.D. (see https://wildfiregames.com/).
 
 ## Structure
 
-- maps/random:
-    Contains the files for the maps. Currently only an extension for Jebel Barkal map is supported.
+- mods/*:
+    Contains the mods. One folder per mod. Overwrites / adds the respective javascript files in the 0ad public folder.
 - perssettings:
     Contains the personal development environment.
 - tools:

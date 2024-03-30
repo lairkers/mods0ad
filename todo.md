@@ -3,14 +3,9 @@
 ## Bugfixes
 - Standing units
     Problem needs to be understood
-- Lag im Spiel eingrenzen
-    Kommt er durch die Scripte? Vor allem der 5-Sekunden-Lag. Debug outputs einbauen wann was getriggert wird. Dann in der Kommandozeile starten und online spielen
 
 ## AIs / players of last group receive giant amount of treasure
 Needs to identify AI players if possible. Otherwise only give treasures if at least 2 groups, then give the last group.
-
-## Shorter attack periods after wall is broken
-However reduce defender's strength a bit
 
 ## Pirates / Ceasar
 After a while (40 min?) pirates attack from river side. They do not have siege units, as this may be too hard
@@ -31,29 +26,3 @@ player.
 ## [low prio] Randomizer
 All of the addons may be selected at game start so that the players must find out where defense
 is needed at most.
-
-## [minor] [discarded] Flooding defense upgrade
-Counter attack a.k.a. flooding defense is only executed after 1, 2 or 3 napata attack cycles
-
-## [minor] [discarded] Patroling ships
-Small upgrade to guard the river. Alternatively the ships are further away from the coast to allow
-building of a harbour but prevent trade.
-
-## [discarded] 10 Plagues
-This may be one of the following list.
-1. Blood == Cannot drink water for 7 days   -> No fish
-2. Frogs: ??        -> Spawns chicken around civic centres (not really a harm)
-                        Alternatively: translate to "high water" which destroys your harbour.
-3./4. Mosquitos     -> All units get small damage
-5. Animal disease   -> Kills some of your riders + Elephants (+ ??)
-6. General disease  -> Kills some of your units
-7. Hagel == Kills men, animals, destroys fields -> Kills / hurts some of your units, destroys fields
-8. Grasshoppers     -> Destroys fields / fields need to be reerected
-9. Darkness         -> Can I change the lighting?? Would not really be a harm
-10. Death to all firstborn  -> Kills some of your units? Only females? Only non-graduated? Only units which are
-                                build within the last 3 minutes (possible?)
-More ideas:
-- Steal all / half of your food / wood (very mean!) or iron (possibility)
-- Kill elephants in the desert
-It may happen after a while but repeatedly. Needs to be balanced properly otherwise it is not cool just annoying.
-Because you cannot do anything against it.
