@@ -131,7 +131,7 @@ var jebelBarkal_cityExpansionInterval = (difficulty) => randFloat(4, 7) + 10 - 2
 /**
  * Delay the city expansion depending on difficulty
  */
-var jebelBarkal_firstCityExpansionTime = (difficulty) => 1;
+var jebelBarkal_firstCityExpansionTime = (difficulty) =>
 	jebelBarkal_cityExpansionInterval(0, difficulty) +
 	30 * Math.max(1, 4 - difficulty);
 
