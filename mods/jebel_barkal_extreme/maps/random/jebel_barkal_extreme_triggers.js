@@ -124,6 +124,18 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
 	(isNomad ?  9 - difficulty : 0);
 
 /**
+ * Frequently the buildings spawn different units that expand the city
+ */
+var jebelBarkal_cityExpansionInterval = (difficulty) => randFloat(4, 7) + 10 - 2 * difficulty;     /* Changed here for quicker expansion */
+
+/**
+ * Delay the city expansion depending on difficulty
+ */
+var jebelBarkal_firstCityExpansionTime = (difficulty) => 1;
+	jebelBarkal_cityExpansionInterval(0, difficulty) +
+	30 * Math.max(1, 4 - difficulty);
+
+/**
  * Account for varying mapsizes and number of players when spawning attackers.
  */
 var jebelBarkal_attackerGroup_sizeFactor = (numPlayers, numInitialSpawnPoints, difficulty) =>
@@ -543,6 +555,7 @@ Trigger.prototype.JebelBarkal_Init = function()
 	this.JebelBarkal_GarrisonBuildings();
 	this.DoAfterDelay(jebelBarkal_firstCityPatrolTime(this.GetDifficulty(), isNomad) * 60 * 1000, "JebelBarkal_SpawnCityPatrolGroups", {});
 	this.JebelBarkal_StartAttackTimer(jebelBarkal_firstAttackTime(this.GetDifficulty(), isNomad));
+	this.JebelBarkal_StartCityExpansionTimer(jebelBarkal_firstCityExpansionTime(this.GetDifficulty()));
     
     this.JebelBarkal_SetApocalypticRidersStartTime(this.GetDifficulty());
     
@@ -949,6 +962,30 @@ Trigger.prototype.JebelBarkal_StartAttackTimer = function(delay)
 	this.DoAfterDelay(nextAttack, "JebelBarkal_SpawnAttackerGroups", {});
 };
 
+Trigger.prototype.JebelBarkal_CityExpansion = function()
+{
+	this.JebelBarkal_StartCityExpansionTimer(jebelBarkal_cityExpansionInterval(this.GetDifficulty()));
+
+	this.JebelBarkal_OwnershipChange_RebuildCity_core();
+}
+
+
+Trigger.prototype.JebelBarkal_StartCityExpansionTimer = function(delay)
+{
+	this.debugLog("JebelBarkal_StartCityExpansionTimer")
+	this.debugLog(delay)
+	let nextCityExpansion = delay * 60 * 1000;
+	this.debugLog(nextCityExpansion)
+
+	Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).AddTimeNotification({
+		"message": markForTranslation("Napata will expand city in %(time)s!"),
+		"players": [0, 5],
+		"translateMessage": true
+	}, nextCityExpansion);
+	
+	this.DoAfterDelay(nextCityExpansion, "JebelBarkal_CityExpansion", {});
+};
+
 /**
  * Keep track of heroes, so that each of them remains unique.
  * Keep track of spawn points, as only there units should be spawned.
@@ -1096,7 +1133,13 @@ Trigger.prototype.JebelBarkal_OwnershipChange_RebuildCity = function(data)
         return;
     if (-1 == this.jebelBarkal_patrolGroupSpawnPoints.indexOf(data.entity))
         return;
-    
+
+	this.JebelBarkal_OwnershipChange_RebuildCity_core()
+}
+
+Trigger.prototype.JebelBarkal_OwnershipChange_RebuildCity_core = function()
+{
+	this.debugLog("JebelBarkal_OwnershipChange_RebuildCity_core")
     const temple = "structures/kush/temple";
     const wonder = "structures/ptol/wonder";
     const fortress = "structures/kush/fortress";
@@ -1131,7 +1174,7 @@ Trigger.prototype.JebelBarkal_OwnershipChange_RebuildCity = function(data)
     /* For every destructed building, try to construct a few new */
     let nNewBuildings = pickRandom(rebuildCitySpeed[this.GetDifficulty() - 1]);
     for (let i = 0; i < nNewBuildings; i ++)
-        this.JebelBarkal_rebuildCity_PlaceAndConstruct(pickRandom(rebuild_templates), 20);
+        this.JebelBarkal_rebuildCity_PlaceAndConstruct(pickRandom(rebuild_templates), 10);
 }
 
 Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
