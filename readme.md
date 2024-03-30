@@ -8,6 +8,8 @@ The purpose of this repo is to develop custom maps and other mods for 0.A.D. (se
 
 - mods/*:
     Contains the mods. One folder per mod. Overwrites / adds the respective javascript files in the 0ad public folder.
+- _zip:
+    Generated / packed mods
 - perssettings:
     Contains the personal development environment.
 - tools:

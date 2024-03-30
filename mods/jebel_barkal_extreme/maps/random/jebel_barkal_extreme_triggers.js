@@ -1138,17 +1138,11 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
 {
 	if (data.from != 0) /* Only pass if Gaia units died */
 		return;
-    this.debugLog('1')
     this.JebelBarkal_OwnershipChange_DetectWin(data);
-    this.debugLog('2')
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
-    this.debugLog('3')
     this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
-    this.debugLog('4')
     this.JebelBarkal_OwnershipChange_RebuildCity(data);
-    this.debugLog('5')
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
-    this.debugLog('6')
 };
 
 
