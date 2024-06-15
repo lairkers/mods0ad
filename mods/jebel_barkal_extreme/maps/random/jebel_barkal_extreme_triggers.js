@@ -1,3 +1,4 @@
+
 /**
  * The city is patroled along its paths by infantry champions that respawn reoccuringly.
  * There are increasingly great gaia attacks started from the different buildings.
@@ -126,14 +127,14 @@ var jebelBarkal_firstAttackTime = (difficulty, isNomad) =>
 /**
  * Frequently the buildings spawn different units that expand the city
  */
-var jebelBarkal_cityExpansionInterval = (difficulty) => randFloat(4, 7) + 10 - 2 * difficulty;     /* Changed here for quicker expansion */
+var jebelBarkal_cityExpansionInterval = (difficulty) => randFloat(2, 4) + 10 - 2 * difficulty;     /* Changed here for quicker expansion */
 
 /**
  * Delay the city expansion depending on difficulty
  */
 var jebelBarkal_firstCityExpansionTime = (difficulty) =>
 	jebelBarkal_cityExpansionInterval(0, difficulty) +
-	30 * Math.max(1, 4 - difficulty);
+	20 * Math.max(1, 4 - difficulty);
 
 /**
  * Account for varying mapsizes and number of players when spawning attackers.
