@@ -979,7 +979,7 @@ Trigger.prototype.JebelBarkal_StartCityExpansionTimer = function(delay)
 
 	Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).AddTimeNotification({
 		"message": markForTranslation("Napata will expand city in %(time)s!"),
-		"players": [0, 5],
+		"players": [-1, 0],
 		"translateMessage": true
 	}, nextCityExpansion);
 	
