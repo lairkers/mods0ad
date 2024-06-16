@@ -367,7 +367,7 @@ var jebelBarkal_attackerGroup_balancing = [
 			}
 		],
 		"formations": [],
-		"targetClasses": () => pickRandom(["Defensive SiegeEngine Monument Wonder", "Structure"])
+		"targetClasses": () => pickRandom(["Defensive SiegeEngine Monument Wonder", "Structure", "Structure", "Structure"])
 	},
 	{
 		"buildingClasses": ["Arsenal"],
@@ -379,7 +379,7 @@ var jebelBarkal_attackerGroup_balancing = [
 			}
 		],
 		"formations": [],
-		"targetClasses": () => pickRandom(["Defensive SiegeEngine Monument Wonder", "Structure"])
+		"targetClasses": () => pickRandom(["Defensive SiegeEngine Monument Wonder", "Structure", "Structure", "Structure"])
 	}
 ];
 
