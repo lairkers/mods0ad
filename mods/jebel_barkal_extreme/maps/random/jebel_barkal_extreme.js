@@ -546,7 +546,7 @@ var irrigationCanalLocations = [];
 for (let area of irrigationCanalAreas)
 	{
 		if (!area.getPoints().length ||
-		    area.getPoints().some(point => !avoidClasses(clPlayer, scaleByMapSize(8, 13), clIrrigationCanal, scaleByMapSize(15, 25)).allows(point)))
+		    area.getPoints().some(point => !avoidClasses(clPlayer, scaleByMapSize(8, 13), clIrrigationCanal, scaleByMapSize(20, 30)).allows(point)))
 			continue;
 
 		irrigationCanalLocations.push(pickRandom(area.getPoints()).clone().rotateAround(riverAngle, mapCenter).x);

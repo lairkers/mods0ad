@@ -15,9 +15,9 @@ This may happen instead of Napata attacks, OR in addition to Napata. It may also
 Alternatively 'Caesar' attacks from left or right with Roman troops. Trigger could be to destroy one of the
 random houses.
 
-## [low prio] Timing based rebuilding city
-After a trigger (time or DefCon or time after DefCon) there are rebuilding troops spawned periodically.
-Goal: avoid the players to wait too long until they raid the city.
+## Ship spawning (a.k.a. Pirates light)
+Ships duplicate every attack (if space is available), thus making it harder to build up trade if waited for too long.
+Needs fine balancing, otherwise it is impossible to ever settle around water.
 
 ## [low prio] Apocalyptic riders upgrade
 There is a stable on top of the mountain which spawns apocalyctic riders, but groups of increasing size per
