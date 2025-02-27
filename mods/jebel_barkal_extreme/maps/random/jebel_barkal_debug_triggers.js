@@ -28,7 +28,7 @@ var jebelBarkal_rank = "Basic";
 /**
  * Limit the total amount of gaia units spawned for performance reasons.
  */
-var jebelBarkal_maxPopulation = 2000;
+var jebelBarkal_maxPopulation = 3000;
 
 /**
  * These are the templates spawned at the gamestart and during the game.

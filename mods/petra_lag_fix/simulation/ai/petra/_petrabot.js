@@ -88,7 +88,7 @@ PETRA.PetraBot.prototype.CustomInit = function(gameState)
 
 PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
 {
-	if (this.gameFinished || this.gameState.getOwnEntities().length == 0)
+	if (this.gameFinished || this.gameState.getOwnEntities().length === 0)
 		return;
     
 	for (let i in this.events)
@@ -109,7 +109,7 @@ PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
 
 		this.playedTurn++;
 
-		if (this.gameState.getOwnEntities().length == 0)
+		if (this.gameState.getOwnEntities().length === 0)
 		{
 			Engine.ProfileStop();
 			return; // With no entities to control the AI cannot do anything
