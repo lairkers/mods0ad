@@ -853,9 +853,13 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 
         for (let spawnEnt of TriggerHelper.MatchEntitiesByClass(this.jebelBarkal_attackerGroupSpawnPoints, spawnPointBalancing.buildingClasses))
         {
-            let unitCount = Math.min(
-                jebelBarkal_maxPopulation - this.jebelBarkal_attackerUnits.length,
-                groupSizeFactor * spawnPointBalancing.unitCount(time));
+            let unitCount = groupSizeFactor * spawnPointBalancing.unitCount(time);
+            
+            // Re-use the "formation" information to ignore the jebelBarkal_maxPopulation for elephants and siege engines
+            // They are very difficult to defeat when mixed with fighting units
+            let formation = pickRandom(spawnPointBalancing.formations);
+            if (formation)
+                unitCount = Math.min(jebelBarkal_maxPopulation - this.jebelBarkal_attackerUnits.length, unitCount);
 
             // Spawn between 0 and 1 elephants per stable in a 1v1 on a normal mapsize at the beginning
             unitCount = Math.floor(unitCount) + (randBool(unitCount % 1) ? 1 : 0);
@@ -877,7 +881,6 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
 
             this.jebelBarkal_attackerUnits = this.jebelBarkal_attackerUnits.concat(spawnedEntities);
 
-            let formation = pickRandom(spawnPointBalancing.formations);
             if (formation)
                 TriggerHelper.SetUnitFormation(jebelBarkal_playerID, spawnedEntities, formation);
 
