@@ -1,0 +1,4 @@
+perssettings/*.mk
+!perssettings/example.mk
+_zip
+.vscode
