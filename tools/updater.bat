@@ -11,7 +11,7 @@ set INSTALLATION_PATH=C:\Users\%USERNAME%\Documents\My Games\0ad\mods
 rem #############################################################################
 rem  Server address and file names
 rem #############################################################################
-set SERVER_HTTP=http://elgee.bplaced.net/mods0ad/mods/
+set SERVER_HTTP=https://ihaveastream.mywire.org/public/uploads/0ad/mods/
 set FILES=jebel_barkal_extreme.zip petra_lag_fix.zip
 
 

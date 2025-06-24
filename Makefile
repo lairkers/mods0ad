@@ -1,5 +1,5 @@
 # Tools
-PYTHON          := python3
+RUBY            := ruby
 ZIP             := 7z
 
 CP              := cp -f
@@ -29,14 +29,12 @@ TEST_DIR  := $(TEST_ROOT)/$(MOD_NAME)
 TEST_LOG  := $(TEST_DIR)/log.html
 
 TOOLS_ROOT   := tools
-PUSH2FTP     := $(TOOLS_ROOT)/pushToFtp.py
+RELEASE_RB   := $(TOOLS_ROOT)/pushToPublicShare.rb
 UPDATER_WIN  := $(TOOLS_ROOT)/updater.bat
 UPDATER_UNIX := $(TOOLS_ROOT)/updater.sh
 
-RELEASE_SERVER_FTP  := elgee.bplaced.net
-RELEASE_SERVER_ROOT := /www
-RELEASE_SERVER_DIR  := mods0ad/mods
-RELEASE_SERVER_MODS := $(RELEASE_SERVER_ROOT)/$(RELEASE_SERVER_DIR)
+RELEASE_SERVER_HTTP := https://ihaveastream.mywire.org
+RELEASE_SERVER_DIR  := public/uploads/0ad/mods
 
 # TODO: how to autostart with MODs / a certain map if MOD is map?
 # Flags
@@ -83,10 +81,9 @@ play: $(MOD_ALL_INSTALLED)
 
 # Uploads *all* mods to FTP server
 release: $(MOD_ALL_ZIPPED)
-	$(PYTHON) $(PUSH2FTP) --server $(RELEASE_SERVER_FTP) --user $(RELEASE_SERVER_USER) \
-        --password $(RELEASE_SERVER_PWD) --path $(RELEASE_SERVER_MODS) \
-        --file $(MOD_ALL_ZIPPED) $(UPDATER_WIN) $(UPDATER_UNIX)
-
+	ruby $(RELEASE_RB) --server $(RELEASE_SERVER_HTTP) \
+		--token $(RELEASE_SERVER_TOKEN) --path $(RELEASE_SERVER_DIR) \
+		$(MOD_ALL_ZIPPED) $(UPDATER_WIN) $(UPDATER_UNIX)
 
 # Download from FTP server
 update download:

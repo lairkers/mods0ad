@@ -11,7 +11,7 @@ INSTALLATION_PATH=~/.local/share/0ad/mods
 ##############################################################################
 # Server address and file names
 ##############################################################################
-SERVER_HTTP=http://elgee.bplaced.net/mods0ad/mods
+SERVER_HTTP=https://ihaveastream.mywire.org/public/uploads/0ad/mods/
 FILES=(jebel_barkal_extreme.zip petra_lag_fix.zip)
 
 

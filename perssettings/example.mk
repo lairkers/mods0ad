@@ -18,10 +18,7 @@ MOD_INSTALL_DIR :=
 0AD     :=
 0AD_LOG :=
 
-# Credentials for the release server, only for releasing to FTP server
-# \todo figure out if this can be entered ad-hoc
+# Credentials for the release server, only for releasing to publicshare server
 # Example
-#   user1
-#   password123
-RELEASE_SERVER_USER :=
-RELEASE_SERVER_PWD  :=
+#   token123
+RELEASE_SERVER_TOKEN :=
