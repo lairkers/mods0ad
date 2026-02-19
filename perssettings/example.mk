@@ -6,15 +6,15 @@ MAP_NAME :=
 
 # The installation path for mods
 # Example:
-#   /home/lars/snap/0ad/354/.local/share/0ad/mods
-#   /home/lars/.local/share/0ad/mods
+#   ~/snap/0ad/354/.local/share/0ad/mods
+#   ~/.local/share/0ad/mods
 #   ~/.local/share/0ad/mods
 MOD_INSTALL_DIR :=
 
 # The 0ad executable and mainlog.html for testing
 # Example for linux if it is in the $PATH:
 #   0ad
-#   /home/lars/.config/0ad/logs/mainlog.html
+#   ~/.config/0ad/logs/mainlog.html
 0AD     :=
 0AD_LOG :=
 

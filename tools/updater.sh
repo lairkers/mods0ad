@@ -5,7 +5,8 @@
 # Example:
 #   INSTALLATION_PATH=~/.local/share/0ad/mods
 ##############################################################################
-INSTALLATION_PATH=~/.local/share/0ad/mods
+#INSTALLATION_PATH=~/.local/share/0ad/mods
+INSTALLATION_PATH=~/snap/0ad/current/.local/share/0ad/mods/
 
 
 ##############################################################################
