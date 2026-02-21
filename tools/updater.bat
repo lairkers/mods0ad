@@ -27,8 +27,8 @@ rem ############################################################################
 rem  Download files to installation path
 rem #############################################################################
 for %%f in (%FILES%) do (
-    rmdir /s /q $INSTALLATION_PATH/%%~nf
-    mkdir $INSTALLATION_PATH/%%~nf
+    del /q "%INSTALLATION_PATH%\%%~nf\mod.json"
+    mkdir "%INSTALLATION_PATH%\%%~nf"
     call curl --create-dirs -o "%INSTALLATION_PATH%\%%~nf\%%f" "%SERVER_HTTP%%%f"
 )
 
