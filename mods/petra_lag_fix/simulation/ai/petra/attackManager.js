@@ -1,25 +1,31 @@
-/**
- * Attack Manager
- */
-PETRA.AttackManager = function(Config)
+import * as filters from "simulation/ai/common-api/filters.js";
+import { aiWarn, SquareVectorDistance, VectorDistance } from "simulation/ai/common-api/utils.js";
+import { AttackPlan } from "simulation/ai/petra/attackPlan.js";
+import * as chat from "simulation/ai/petra/chatHelper.js";
+import { Config } from "simulation/ai/petra/config.js";
+import * as difficulty from "simulation/ai/petra/difficultyLevel.js";
+import { allowCapture, getLandAccess } from "simulation/ai/petra/entityExtend.js";
+import { Worker } from "simulation/ai/petra/worker.js";
+
+export function AttackManager(config)
 {
-	this.Config = Config;
+	this.Config = config;
 
 	this.totalNumber = 0;
 	this.attackNumber = 0;
 	this.rushNumber = 0;
 	this.raidNumber = 0;
 	this.upcomingAttacks = {
-		[PETRA.AttackPlan.TYPE_RUSH]: [],
-		[PETRA.AttackPlan.TYPE_RAID]: [],
-		[PETRA.AttackPlan.TYPE_DEFAULT]: [],
-		[PETRA.AttackPlan.TYPE_HUGE_ATTACK]: []
+		[AttackPlan.TYPE_RUSH]: [],
+		[AttackPlan.TYPE_RAID]: [],
+		[AttackPlan.TYPE_DEFAULT]: [],
+		[AttackPlan.TYPE_HUGE_ATTACK]: []
 	};
 	this.startedAttacks = {
-		[PETRA.AttackPlan.TYPE_RUSH]: [],
-		[PETRA.AttackPlan.TYPE_RAID]: [],
-		[PETRA.AttackPlan.TYPE_DEFAULT]: [],
-		[PETRA.AttackPlan.TYPE_HUGE_ATTACK]: []
+		[AttackPlan.TYPE_RUSH]: [],
+		[AttackPlan.TYPE_RAID]: [],
+		[AttackPlan.TYPE_DEFAULT]: [],
+		[AttackPlan.TYPE_HUGE_ATTACK]: []
 	};
 	this.bombingAttacks = new Map();// Temporary attacks for siege units while waiting their current attack to start
 	this.debugTime = 0;
@@ -27,16 +33,16 @@ PETRA.AttackManager = function(Config)
 	this.rushSize = [];
 	this.currentEnemyPlayer = undefined; // enemy player we are currently targeting
 	this.defeated = {};
-};
+}
 
 /** More initialisation for stuff that needs the gameState */
-PETRA.AttackManager.prototype.init = function(gameState)
+AttackManager.prototype.init = function(gameState)
 {
-	this.outOfPlan = gameState.getOwnUnits().filter(API3.Filters.byMetadata(PlayerID, "plan", -1));
+	this.outOfPlan = gameState.getOwnUnits().filter(filters.byMetadata(PlayerID, "plan", -1));
 	this.outOfPlan.registerUpdates();
 };
 
-PETRA.AttackManager.prototype.setRushes = function(allowed)
+AttackManager.prototype.setRushes = function(allowed)
 {
 	if (this.Config.personality.aggressive > this.Config.personalityCut.strong && allowed > 2)
 	{
@@ -55,25 +61,25 @@ PETRA.AttackManager.prototype.setRushes = function(allowed)
 	}
 };
 
-PETRA.AttackManager.prototype.checkEvents = function(gameState, events)
+AttackManager.prototype.checkEvents = function(gameState, events)
 {
-	for (let evt of events.PlayerDefeated)
+	for (const evt of events.PlayerDefeated)
 		this.defeated[evt.playerId] = true;
 
 	let answer = "decline";
 	let other;
 	let targetPlayer;
-	for (let evt of events.AttackRequest)
+	for (const evt of events.AttackRequest)
 	{
 		if (evt.source === PlayerID || !gameState.isPlayerAlly(evt.source) || !gameState.isPlayerEnemy(evt.player))
 			continue;
 		targetPlayer = evt.player;
 		let available = 0;
-		for (let attackType in this.upcomingAttacks)
+		for (const attackType in this.upcomingAttacks)
 		{
-			for (let attack of this.upcomingAttacks[attackType])
+			for (const attack of this.upcomingAttacks[attackType])
 			{
-				if (attack.state === PETRA.AttackPlan.STATE_COMPLETING)
+				if (attack.state === AttackPlan.STATE_COMPLETING)
 				{
 					if (attack.targetPlayer === targetPlayer)
 						available += attack.unitCollection.length;
@@ -91,11 +97,11 @@ PETRA.AttackManager.prototype.checkEvents = function(gameState, events)
 
 		if (available > 12)	// launch the attack immediately
 		{
-			for (let attackType in this.upcomingAttacks)
+			for (const attackType in this.upcomingAttacks)
 			{
-				for (let attack of this.upcomingAttacks[attackType])
+				for (const attack of this.upcomingAttacks[attackType])
 				{
-					if (attack.state === PETRA.AttackPlan.STATE_COMPLETING ||
+					if (attack.state === AttackPlan.STATE_COMPLETING ||
 						attack.targetPlayer !== targetPlayer ||
 						attack.unitCollection.length < 3)
 						continue;
@@ -110,11 +116,11 @@ PETRA.AttackManager.prototype.checkEvents = function(gameState, events)
 		break;  // take only the first attack request into account
 	}
 	if (targetPlayer !== undefined)
-		PETRA.chatAnswerRequestAttack(gameState, targetPlayer, answer, other);
+		chat.answerRequestAttack(gameState, targetPlayer, answer, other);
 
-	for (let evt of events.EntityRenamed)	// take care of packing units in bombing attacks
+	for (const evt of events.EntityRenamed)	// take care of packing units in bombing attacks
 	{
-		for (let [targetId, unitIds] of this.bombingAttacks)
+		for (const [targetId, unitIds] of this.bombingAttacks)
 		{
 			if (targetId == evt.entity)
 			{
@@ -133,24 +139,24 @@ PETRA.AttackManager.prototype.checkEvents = function(gameState, events)
 /**
  * Check for any structure in range from within our territory, and bomb it
  */
-PETRA.AttackManager.prototype.assignBombers = function(gameState)
+AttackManager.prototype.assignBombers = function(gameState)
 {
 	// First some cleaning of current bombing attacks
-	for (let [targetId, unitIds] of this.bombingAttacks)
+	for (const [targetId, unitIds] of this.bombingAttacks)
 	{
-		let target = gameState.getEntityById(targetId);
+		const target = gameState.getEntityById(targetId);
 		if (!target || !gameState.isPlayerEnemy(target.owner()))
 			this.bombingAttacks.delete(targetId);
 		else
 		{
-			for (let entId of unitIds.values())
+			for (const entId of unitIds.values())
 			{
-				let ent = gameState.getEntityById(entId);
+				const ent = gameState.getEntityById(entId);
 				if (ent && ent.owner() == PlayerID)
 				{
-					let plan = ent.getMetadata(PlayerID, "plan");
-					let orders = ent.unitAIOrderData();
-					let lastOrder = orders && orders.length ? orders[orders.length-1] : null;
+					const plan = ent.getMetadata(PlayerID, "plan");
+					const orders = ent.unitAIOrderData();
+					const lastOrder = orders && orders.length ? orders[orders.length-1] : null;
 					if (lastOrder && lastOrder.target && lastOrder.target == targetId && plan != -2 && plan != -3)
 						continue;
 				}
@@ -161,8 +167,9 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
 		}
 	}
 
-	const bombers = gameState.updatingCollection("bombers", API3.Filters.byClasses(["BoltShooter", "StoneThrower"]), gameState.getOwnUnits());
-	for (let ent of bombers.values())
+	const bombers = gameState.updatingCollection("bombers",
+		filters.byClasses(["BoltShooter", "StoneThrower"]), gameState.getOwnUnits());
+	for (const ent of bombers.values())
 	{
 		if (!ent.position() || !ent.isIdle() || !ent.attackRange("Ranged"))
 			continue;
@@ -170,12 +177,13 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
 			continue;
 		if (ent.getMetadata(PlayerID, "plan") !== undefined && ent.getMetadata(PlayerID, "plan") != -1)
 		{
-			let subrole = ent.getMetadata(PlayerID, "subrole");
-			if (subrole && (subrole === PETRA.Worker.SUBROLE_COMPLETING || subrole === PETRA.Worker.SUBROLE_WALKING || subrole === PETRA.Worker.SUBROLE_ATTACKING))
+			const subrole = ent.getMetadata(PlayerID, "subrole");
+			if (subrole && (subrole === Worker.SUBROLE_COMPLETING ||
+				subrole === Worker.SUBROLE_WALKING || subrole === Worker.SUBROLE_ATTACKING))
 				continue;
 		}
 		let alreadyBombing = false;
-		for (let unitIds of this.bombingAttacks.values())
+		for (const unitIds of this.bombingAttacks.values())
 		{
 			if (!unitIds.has(ent.id()))
 				continue;
@@ -185,15 +193,15 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
 		if (alreadyBombing)
 			break;
 
-		let range = ent.attackRange("Ranged").max;
-		let entPos = ent.position();
-		let access = PETRA.getLandAccess(gameState, ent);
-		for (let struct of gameState.getEnemyStructures().values())
+		const range = ent.attackRange("Ranged").max;
+		const entPos = ent.position();
+		const access = getLandAccess(gameState, ent);
+		for (const struct of gameState.getEnemyStructures().values())
 		{
-			if (!ent.canAttackTarget(struct, PETRA.allowCapture(gameState, ent, struct)))
+			if (!ent.canAttackTarget(struct, allowCapture(gameState, ent, struct)))
 				continue;
 
-			let structPos = struct.position();
+			const structPos = struct.position();
 			let x;
 			let z;
 			if (struct.hasClass("Field"))
@@ -202,13 +210,13 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
 				    !gameState.isPlayerEnemy(gameState.ai.HQ.territoryMap.getOwner(structPos)))
 					continue;
 			}
-			let dist = API3.VectorDistance(entPos, structPos);
+			const dist = VectorDistance(entPos, structPos);
 			if (dist > range)
 			{
-				let safety = struct.footprintRadius() + 30;
+				const safety = struct.footprintRadius() + 30;
 				x = structPos[0] + (entPos[0] - structPos[0]) * safety / dist;
 				z = structPos[1] + (entPos[1] - structPos[1]) * safety / dist;
-				let owner = gameState.ai.HQ.territoryMap.getOwner([x, z]);
+				const owner = gameState.ai.HQ.territoryMap.getOwner([x, z]);
 				if (owner != 0 && gameState.isPlayerEnemy(owner))
 					continue;
 				x = structPos[0] + (entPos[0] - structPos[0]) * range / dist;
@@ -218,7 +226,7 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
 					continue;
 			}
 			let attackingUnits;
-			for (let [targetId, unitIds] of this.bombingAttacks)
+			for (const [targetId, unitIds] of this.bombingAttacks)
 			{
 				if (targetId != struct.id())
 					continue;
@@ -245,62 +253,81 @@ PETRA.AttackManager.prototype.assignBombers = function(gameState)
  * Some functions are run every turn
  * Others once in a while
  */
-PETRA.AttackManager.prototype.update = function(gameState, queues, events)
+AttackManager.prototype.update = function(gameState, queues, events)
 {
 	if (this.Config.debug > 2 && gameState.ai.elapsedTime > this.debugTime + 60)
 	{
 		this.debugTime = gameState.ai.elapsedTime;
-		API3.warn(" upcoming attacks =================");
-		for (let attackType in this.upcomingAttacks)
-			for (let attack of this.upcomingAttacks[attackType])
-				API3.warn(" plan " + attack.name + " type " + attackType + " state " + attack.state + " units " + attack.unitCollection.length);
-		API3.warn(" started attacks ==================");
-		for (let attackType in this.startedAttacks)
-			for (let attack of this.startedAttacks[attackType])
-				API3.warn(" plan " + attack.name + " type " + attackType + " state " + attack.state + " units " + attack.unitCollection.length);
-		API3.warn(" ==================================");
+		aiWarn(" upcoming attacks =================");
+		for (const attackType in this.upcomingAttacks)
+		{
+			for (const attack of this.upcomingAttacks[attackType])
+			{
+				aiWarn(" plan " + attack.name + " type " + attackType + " state " + attack.state +
+					" units " + attack.unitCollection.length);
+			}
+		}
+		aiWarn(" started attacks ==================");
+		for (const attackType in this.startedAttacks)
+		{
+			for (const attack of this.startedAttacks[attackType])
+			{
+				aiWarn(" plan " + attack.name + " type " + attackType + " state " + attack.state +
+					" units " + attack.unitCollection.length);
+			}
+		}
+		aiWarn(" ==================================");
 	}
 
 	this.checkEvents(gameState, events);
 	const unexecutedAttacks = {
-		[PETRA.AttackPlan.TYPE_RUSH]: 0,
-		[PETRA.AttackPlan.TYPE_RAID]: 0,
-		[PETRA.AttackPlan.TYPE_DEFAULT]: 0,
-		[PETRA.AttackPlan.TYPE_HUGE_ATTACK]: 0
+		[AttackPlan.TYPE_RUSH]: 0,
+		[AttackPlan.TYPE_RAID]: 0,
+		[AttackPlan.TYPE_DEFAULT]: 0,
+		[AttackPlan.TYPE_HUGE_ATTACK]: 0
 	};
-	for (let attackType in this.upcomingAttacks)
+	for (const attackType in this.upcomingAttacks)
 	{
 		for (let i = 0; i < this.upcomingAttacks[attackType].length; ++i)
 		{
-			let attack = this.upcomingAttacks[attackType][i];
+			const attack = this.upcomingAttacks[attackType][i];
 			attack.checkEvents(gameState, events);
 
 			if (attack.isStarted())
-				API3.warn("Petra problem in attackManager: attack in preparation has already started ???");
+			{
+				aiWarn("Petra problem in attackManager: attack in preparation has already " +
+					"started ???");
+			}
 
-			let updateStep = attack.updatePreparation(gameState);
+			const updateStep = attack.updatePreparation(gameState);
 			// now we're gonna check if the preparation time is over
-			if (updateStep === PETRA.AttackPlan.PREPARATION_KEEP_GOING || attack.isPaused())
+			if (updateStep === AttackPlan.PREPARATION_KEEP_GOING || attack.isPaused())
 			{
 				// just chillin'
-				if (attack.state === PETRA.AttackPlan.STATE_UNEXECUTED)
+				if (attack.state === AttackPlan.STATE_UNEXECUTED)
 					++unexecutedAttacks[attackType];
 			}
-			else if (updateStep === PETRA.AttackPlan.PREPARATION_FAILED)
+			else if (updateStep === AttackPlan.PREPARATION_FAILED)
 			{
 				if (this.Config.debug > 1)
-					API3.warn("Attack Manager: " + attack.getType() + " plan " + attack.getName() + " aborted.");
+				{
+					aiWarn("Attack Manager: " + attack.getType() + " plan " + attack.getName() +
+						" aborted.");
+				}
 				attack.Abort(gameState);
 				this.upcomingAttacks[attackType].splice(i--, 1);
 			}
-			else if (updateStep === PETRA.AttackPlan.PREPARATION_START)
+			else if (updateStep === AttackPlan.PREPARATION_START)
 			{
 				if (attack.StartAttack(gameState))
 				{
 					if (this.Config.debug > 1)
-						API3.warn("Attack Manager: Starting " + attack.getType() + " plan " + attack.getName());
+					{
+						aiWarn("Attack Manager: Starting " + attack.getType() + " plan " +
+							attack.getName());
+					}
 					if (this.Config.chat)
-						PETRA.chatLaunchAttack(gameState, attack.targetPlayer, attack.getType());
+						chat.launchAttack(gameState, attack.targetPlayer, attack.getType());
 					this.startedAttacks[attackType].push(attack);
 				}
 				else
@@ -310,20 +337,23 @@ PETRA.AttackManager.prototype.update = function(gameState, queues, events)
 		}
 	}
 
-	for (let attackType in this.startedAttacks)
+	for (const attackType in this.startedAttacks)
 	{
 		for (let i = 0; i < this.startedAttacks[attackType].length; ++i)
 		{
-			let attack = this.startedAttacks[attackType][i];
+			const attack = this.startedAttacks[attackType][i];
 			attack.checkEvents(gameState, events);
 			// okay so then we'll update the attack.
 			if (attack.isPaused())
 				continue;
-			let remaining = attack.update(gameState, events);
+			const remaining = attack.update(gameState, events);
 			if (!remaining)
 			{
 				if (this.Config.debug > 1)
-					API3.warn("Military Manager: " + attack.getType() + " plan " + attack.getName() + " is finished with remaining " + remaining);
+				{
+					aiWarn("Military Manager: " + attack.getType() + " plan " +
+						attack.getName() + " is finished with remaining " + remaining);
+				}
 				attack.Abort(gameState);
 				this.startedAttacks[attackType].splice(i--, 1);
 			}
@@ -332,42 +362,54 @@ PETRA.AttackManager.prototype.update = function(gameState, queues, events)
 
 	// creating plans after updating because an aborted plan might be reused in that case.
 
-	let barracksNb = gameState.getOwnEntitiesByClass("Barracks", true).filter(API3.Filters.isBuilt()).length;
+	const barracksNb = gameState.getOwnEntitiesByClass("Barracks", true).filter(filters.isBuilt()).length;
 	if (this.rushNumber < this.maxRushes && barracksNb >= 1)
 	{
-		if (unexecutedAttacks[PETRA.AttackPlan.TYPE_RUSH] === 0)
+		if (unexecutedAttacks[AttackPlan.TYPE_RUSH] === 0)
 		{
 			// we have a barracks and we want to rush, rush.
-			let data = { "targetSize": this.rushSize[this.rushNumber] };
-			const attackPlan = new PETRA.AttackPlan(gameState, this.Config, this.totalNumber, PETRA.AttackPlan.TYPE_RUSH, data);
+			const data = { "targetSize": this.rushSize[this.rushNumber] };
+			const attackPlan = new AttackPlan(gameState, this.Config, this.totalNumber,
+				AttackPlan.TYPE_RUSH, data);
 			if (!attackPlan.failed)
 			{
 				if (this.Config.debug > 1)
-					API3.warn("Military Manager: Rushing plan " + this.totalNumber + " with maxRushes " + this.maxRushes);
+				{
+					aiWarn("Military Manager: Rushing plan " + this.totalNumber +
+						" with maxRushes " + this.maxRushes);
+				}
 				this.totalNumber++;
 				attackPlan.init(gameState);
-				this.upcomingAttacks[PETRA.AttackPlan.TYPE_RUSH].push(attackPlan);
+				this.upcomingAttacks[AttackPlan.TYPE_RUSH].push(attackPlan);
 			}
 			this.rushNumber++;
 		}
 	}
-	else if (unexecutedAttacks[PETRA.AttackPlan.TYPE_DEFAULT] == 0 && unexecutedAttacks[PETRA.AttackPlan.TYPE_HUGE_ATTACK] == 0 &&
-		this.startedAttacks[PETRA.AttackPlan.TYPE_DEFAULT].length + this.startedAttacks[PETRA.AttackPlan.TYPE_HUGE_ATTACK].length <
+	else if (unexecutedAttacks[AttackPlan.TYPE_DEFAULT] == 0 &&
+		unexecutedAttacks[AttackPlan.TYPE_HUGE_ATTACK] == 0 &&
+		this.startedAttacks[AttackPlan.TYPE_DEFAULT].length +
+			this.startedAttacks[AttackPlan.TYPE_HUGE_ATTACK].length <
 			Math.min(2, 1 + Math.round(gameState.getPopulationMax() / 100)) &&
-		(this.startedAttacks[PETRA.AttackPlan.TYPE_DEFAULT].length + this.startedAttacks[PETRA.AttackPlan.TYPE_HUGE_ATTACK].length == 0 ||
+		(this.startedAttacks[AttackPlan.TYPE_DEFAULT].length +
+			this.startedAttacks[AttackPlan.TYPE_HUGE_ATTACK].length == 0 ||
 		gameState.getPopulationMax() - gameState.getPopulation() > 12))
 	{
 		if (barracksNb >= 1 && (gameState.currentPhase() > 1 || gameState.isResearching(gameState.getPhaseName(2))) ||
 			!gameState.ai.HQ.hasPotentialBase())	// if we have no base ... nothing else to do than attack
 		{
-			const type = this.attackNumber < 2 || this.startedAttacks[PETRA.AttackPlan.TYPE_HUGE_ATTACK].length > 0 ? PETRA.AttackPlan.TYPE_DEFAULT : PETRA.AttackPlan.TYPE_HUGE_ATTACK;
-			let attackPlan = new PETRA.AttackPlan(gameState, this.Config, this.totalNumber, type);
+			const type = this.attackNumber < 2 ||
+				this.startedAttacks[AttackPlan.TYPE_HUGE_ATTACK].length > 0 ?
+				AttackPlan.TYPE_DEFAULT : AttackPlan.TYPE_HUGE_ATTACK;
+			const attackPlan = new AttackPlan(gameState, this.Config, this.totalNumber, type);
 			if (attackPlan.failed)
 				this.attackPlansEncounteredWater = true; // hack
 			else
 			{
 				if (this.Config.debug > 1)
-					API3.warn("Military Manager: Creating the plan " + type + "  " + this.totalNumber);
+				{
+					aiWarn("Military Manager: Creating the plan " + type + "  " +
+						this.totalNumber);
+				}
 				this.totalNumber++;
 				attackPlan.init(gameState);
 				this.upcomingAttacks[type].push(attackPlan);
@@ -376,10 +418,11 @@ PETRA.AttackManager.prototype.update = function(gameState, queues, events)
 		}
 	}
 
-	if (unexecutedAttacks[PETRA.AttackPlan.TYPE_RAID] === 0 && gameState.ai.HQ.defenseManager.targetList.length)
+	if (unexecutedAttacks[AttackPlan.TYPE_RAID] === 0 &&
+		gameState.ai.HQ.defenseManager.targetList.length)
 	{
 		let target;
-		for (let targetId of gameState.ai.HQ.defenseManager.targetList)
+		for (const targetId of gameState.ai.HQ.defenseManager.targetList)
 		{
 			target = gameState.getEntityById(targetId);
 			if (!target)
@@ -393,64 +436,64 @@ PETRA.AttackManager.prototype.update = function(gameState, queues, events)
 	}
 
 	// Check if we have some unused ranged siege unit which could do something useful while waiting
-	if (this.Config.difficulty > PETRA.DIFFICULTY_VERY_EASY && gameState.ai.playedTurn % 5 == 0)
+	if (this.Config.difficulty > difficulty.VERY_EASY && gameState.ai.playedTurn % 5 == 0)
 		this.assignBombers(gameState);
 };
 
-PETRA.AttackManager.prototype.getPlan = function(planName)
+AttackManager.prototype.getPlan = function(planName)
 {
-	for (let attackType in this.upcomingAttacks)
+	for (const attackType in this.upcomingAttacks)
 	{
-		for (let attack of this.upcomingAttacks[attackType])
+		for (const attack of this.upcomingAttacks[attackType])
 			if (attack.getName() == planName)
 				return attack;
 	}
-	for (let attackType in this.startedAttacks)
+	for (const attackType in this.startedAttacks)
 	{
-		for (let attack of this.startedAttacks[attackType])
+		for (const attack of this.startedAttacks[attackType])
 			if (attack.getName() == planName)
 				return attack;
 	}
 	return undefined;
 };
 
-PETRA.AttackManager.prototype.pausePlan = function(planName)
+AttackManager.prototype.pausePlan = function(planName)
 {
-	let attack = this.getPlan(planName);
+	const attack = this.getPlan(planName);
 	if (attack)
 		attack.setPaused(true);
 };
 
-PETRA.AttackManager.prototype.unpausePlan = function(planName)
+AttackManager.prototype.unpausePlan = function(planName)
 {
-	let attack = this.getPlan(planName);
+	const attack = this.getPlan(planName);
 	if (attack)
 		attack.setPaused(false);
 };
 
-PETRA.AttackManager.prototype.pauseAllPlans = function()
+AttackManager.prototype.pauseAllPlans = function()
 {
-	for (let attackType in this.upcomingAttacks)
-		for (let attack of this.upcomingAttacks[attackType])
+	for (const attackType in this.upcomingAttacks)
+		for (const attack of this.upcomingAttacks[attackType])
 			attack.setPaused(true);
 
-	for (let attackType in this.startedAttacks)
-		for (let attack of this.startedAttacks[attackType])
+	for (const attackType in this.startedAttacks)
+		for (const attack of this.startedAttacks[attackType])
 			attack.setPaused(true);
 };
 
-PETRA.AttackManager.prototype.unpauseAllPlans = function()
+AttackManager.prototype.unpauseAllPlans = function()
 {
-	for (let attackType in this.upcomingAttacks)
-		for (let attack of this.upcomingAttacks[attackType])
+	for (const attackType in this.upcomingAttacks)
+		for (const attack of this.upcomingAttacks[attackType])
 			attack.setPaused(false);
 
-	for (let attackType in this.startedAttacks)
-		for (let attack of this.startedAttacks[attackType])
+	for (const attackType in this.startedAttacks)
+		for (const attack of this.startedAttacks[attackType])
 			attack.setPaused(false);
 };
 
-PETRA.AttackManager.prototype.getAttackInPreparation = function(type)
+AttackManager.prototype.getAttackInPreparation = function(type)
 {
 	return this.upcomingAttacks[type].length ? this.upcomingAttacks[type][0] : undefined;
 };
@@ -460,7 +503,7 @@ PETRA.AttackManager.prototype.getAttackInPreparation = function(type)
  * attack.targetPlayer is undefined and in that case, we keep track of the chosen target
  * for future attacks.
  */
-PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
+AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 {
 	let enemyPlayer;
 
@@ -477,11 +520,11 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 	if (enemyPlayer)
 		return enemyPlayer;
 
-	let veto = {};
-	for (let i in this.defeated)
+	const veto = {};
+	for (const i in this.defeated)
 		veto[i] = true;
 	// No rush if enemy too well defended (i.e. iberians)
-	if (attack.type === PETRA.AttackPlan.TYPE_RUSH)
+	if (attack.type === AttackPlan.TYPE_RUSH)
 	{
 		for (let i = 1; i < gameState.sharedScript.playersData.length; ++i)
 		{
@@ -490,7 +533,7 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 			if (this.defeated[i])
 				continue;
 			let enemyDefense = 0;
-			for (let ent of gameState.getEnemyStructures(i).values())
+			for (const ent of gameState.getEnemyStructures(i).values())
 				if (ent.hasClasses(["Tower", "WallTower", "Fortress"]))
 					enemyDefense++;
 			if (enemyDefense > 6)
@@ -500,7 +543,7 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 
 	// then if not a huge attack, continue attacking our previous target as long as it has some entities,
 	// otherwise target the most accessible one
-	if (attack.type !== PETRA.AttackPlan.TYPE_HUGE_ATTACK)
+	if (attack.type !== AttackPlan.TYPE_HUGE_ATTACK)
 	{
 		if (attack.targetPlayer === undefined && this.currentEnemyPlayer !== undefined &&
 			!this.defeated[this.currentEnemyPlayer] &&
@@ -510,22 +553,22 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 
 		let distmin;
 		let ccmin;
-		let ccEnts = gameState.updatingGlobalCollection("allCCs", API3.Filters.byClass("CivCentre"));
-		for (let ourcc of ccEnts.values())
+		const ccEnts = gameState.updatingGlobalCollection("allCCs", filters.byClass("CivCentre"));
+		for (const ourcc of ccEnts.values())
 		{
 			if (ourcc.owner() != PlayerID)
 				continue;
-			let ourPos = ourcc.position();
-			let access = PETRA.getLandAccess(gameState, ourcc);
-			for (let enemycc of ccEnts.values())
+			const ourPos = ourcc.position();
+			const access = getLandAccess(gameState, ourcc);
+			for (const enemycc of ccEnts.values())
 			{
 				if (veto[enemycc.owner()])
 					continue;
 				if (!gameState.isPlayerEnemy(enemycc.owner()))
 					continue;
-				if (access !== PETRA.getLandAccess(gameState, enemycc))
+				if (access !== getLandAccess(gameState, enemycc))
 					continue;
-				let dist = API3.SquareVectorDistance(ourPos, enemycc.position());
+				const dist = SquareVectorDistance(ourPos, enemycc.position());
 				if (distmin && dist > distmin)
 					continue;
 				ccmin = enemycc;
@@ -552,7 +595,7 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
 			continue;
 		let enemyCount = 0;
 		let enemyCivCentre = false;
-		for (let ent of gameState.getEntities(i).values())
+		for (const ent of gameState.getEntities(i).values())
 		{
 			enemyCount++;
 			if (ent.hasClass("CivCentre"))
@@ -574,16 +617,16 @@ PETRA.AttackManager.prototype.getEnemyPlayer = function(gameState, attack)
  * Target the player with the most advanced wonder.
  * TODO currently the first built wonder is kept, should chek on the minimum wonderDuration left instead.
  */
-PETRA.AttackManager.prototype.getWonderEnemyPlayer = function(gameState, attack)
+AttackManager.prototype.getWonderEnemyPlayer = function(gameState, attack)
 {
 	let enemyPlayer;
 	let enemyWonder;
 	let moreAdvanced;
-	for (let wonder of gameState.getEnemyStructures().filter(API3.Filters.byClass("Wonder")).values())
+	for (const wonder of gameState.getEnemyStructures().filter(filters.byClass("Wonder")).values())
 	{
 		if (wonder.owner() == 0)
 			continue;
-		let progress = wonder.foundationProgress();
+		const progress = wonder.foundationProgress();
 		if (progress === undefined)
 		{
 			enemyWonder = wonder;
@@ -606,10 +649,10 @@ PETRA.AttackManager.prototype.getWonderEnemyPlayer = function(gameState, attack)
 /**
  * Target the player with the most relics (including gaia).
  */
-PETRA.AttackManager.prototype.getRelicEnemyPlayer = function(gameState, attack)
+AttackManager.prototype.getRelicEnemyPlayer = function(gameState, attack)
 {
 	let enemyPlayer;
-	let allRelics = gameState.updatingGlobalCollection("allRelics", API3.Filters.byClass("Relic"));
+	const allRelics = gameState.updatingGlobalCollection("allRelics", filters.byClass("Relic"));
 	let maxRelicsOwned = 0;
 	for (let i = 0; i < gameState.sharedScript.playersData.length; ++i)
 	{
@@ -617,7 +660,7 @@ PETRA.AttackManager.prototype.getRelicEnemyPlayer = function(gameState, attack)
 		    i == 0 && !gameState.ai.HQ.victoryManager.tryCaptureGaiaRelic)
 			continue;
 
-		let relicsCount = allRelics.filter(relic => relic.owner() == i).length;
+		const relicsCount = allRelics.filter(relic => relic.owner() == i).length;
 		if (relicsCount <= maxRelicsOwned)
 			continue;
 		maxRelicsOwned = relicsCount;
@@ -634,17 +677,17 @@ PETRA.AttackManager.prototype.getRelicEnemyPlayer = function(gameState, attack)
 };
 
 /** f.e. if we have changed diplomacy with another player. */
-PETRA.AttackManager.prototype.cancelAttacksAgainstPlayer = function(gameState, player)
+AttackManager.prototype.cancelAttacksAgainstPlayer = function(gameState, player)
 {
-	for (let attackType in this.upcomingAttacks)
-		for (let attack of this.upcomingAttacks[attackType])
+	for (const attackType in this.upcomingAttacks)
+		for (const attack of this.upcomingAttacks[attackType])
 			if (attack.targetPlayer === player)
 				attack.targetPlayer = undefined;
 
-	for (let attackType in this.startedAttacks)
+	for (const attackType in this.startedAttacks)
 		for (let i = 0; i < this.startedAttacks[attackType].length; ++i)
 		{
-			let attack = this.startedAttacks[attackType][i];
+			const attack = this.startedAttacks[attackType][i];
 			if (attack.targetPlayer === player)
 			{
 				attack.Abort(gameState);
@@ -653,33 +696,34 @@ PETRA.AttackManager.prototype.cancelAttacksAgainstPlayer = function(gameState, p
 		}
 };
 
-PETRA.AttackManager.prototype.raidTargetEntity = function(gameState, ent)
+AttackManager.prototype.raidTargetEntity = function(gameState, ent)
 {
-	let data = { "target": ent };
-	const attackPlan = new PETRA.AttackPlan(gameState, this.Config, this.totalNumber, PETRA.AttackPlan.TYPE_RAID, data);
+	const data = { "target": ent };
+	const attackPlan = new AttackPlan(gameState, this.Config, this.totalNumber,
+		AttackPlan.TYPE_RAID, data);
 	if (attackPlan.failed)
 		return null;
 	if (this.Config.debug > 1)
-		API3.warn("Military Manager: Raiding plan " + this.totalNumber);
+		aiWarn("Military Manager: Raiding plan " + this.totalNumber);
 	this.raidNumber++;
 	this.totalNumber++;
 	attackPlan.init(gameState);
-	this.upcomingAttacks[PETRA.AttackPlan.TYPE_RAID].push(attackPlan);
+	this.upcomingAttacks[AttackPlan.TYPE_RAID].push(attackPlan);
 	return attackPlan;
 };
 
 /**
  * Return the number of units from any of our attacking armies around this position
  */
-PETRA.AttackManager.prototype.numAttackingUnitsAround = function(pos, dist)
+AttackManager.prototype.numAttackingUnitsAround = function(pos, dist)
 {
 	let num = 0;
-	for (let attackType in this.startedAttacks)
-		for (let attack of this.startedAttacks[attackType])
+	for (const attackType in this.startedAttacks)
+		for (const attack of this.startedAttacks[attackType])
 		{
 			if (!attack.position)	// this attack may be inside a transport
 				continue;
-			if (API3.SquareVectorDistance(pos, attack.position) < dist*dist)
+			if (SquareVectorDistance(pos, attack.position) < dist*dist)
 				num += attack.unitCollection.length;
 		}
 	return num;
@@ -691,32 +735,32 @@ PETRA.AttackManager.prototype.numAttackingUnitsAround = function(pos, dist)
  * data.armyID: transform only the defense army ID into a new attack
  * data.uniqueTarget: the attack will stop when the target is destroyed or captured
  */
-PETRA.AttackManager.prototype.switchDefenseToAttack = function(gameState, target, data)
+AttackManager.prototype.switchDefenseToAttack = function(gameState, target, data)
 {
 	if (!target || !target.position())
 		return false;
 	if (!data.range && !data.armyID)
 	{
-		API3.warn(" attackManager.switchDefenseToAttack inconsistent data " + uneval(data));
+		aiWarn(" attackManager.switchDefenseToAttack inconsistent data " + uneval(data));
 		return false;
 	}
-	let attackData = data.uniqueTarget ? { "uniqueTargetId": target.id() } : undefined;
-	let pos = target.position();
-	const attackType = PETRA.AttackPlan.TYPE_DEFAULT;
-	let attackPlan = new PETRA.AttackPlan(gameState, this.Config, this.totalNumber, attackType, attackData);
+	const attackData = data.uniqueTarget ? { "uniqueTargetId": target.id() } : undefined;
+	const pos = target.position();
+	const attackType = AttackPlan.TYPE_DEFAULT;
+	const attackPlan = new AttackPlan(gameState, this.Config, this.totalNumber, attackType, attackData);
 	if (attackPlan.failed)
 		return false;
 	this.totalNumber++;
 	attackPlan.init(gameState);
 	this.startedAttacks[attackType].push(attackPlan);
 
-	let targetAccess = PETRA.getLandAccess(gameState, target);
-	for (let army of gameState.ai.HQ.defenseManager.armies)
+	const targetAccess = getLandAccess(gameState, target);
+	for (const army of gameState.ai.HQ.defenseManager.armies)
 	{
 		if (data.range)
 		{
 			army.recalculatePosition(gameState);
-			if (API3.SquareVectorDistance(pos, army.foePosition) > data.range * data.range)
+			if (SquareVectorDistance(pos, army.foePosition) > data.range * data.range)
 				continue;
 		}
 		else if (army.ID != +data.armyID)
@@ -726,15 +770,15 @@ PETRA.AttackManager.prototype.switchDefenseToAttack = function(gameState, target
 			army.removeFoe(gameState, army.foeEntities[0]);
 		while (army.ownEntities.length > 0)
 		{
-			let unitId = army.ownEntities[0];
+			const unitId = army.ownEntities[0];
 			army.removeOwn(gameState, unitId);
-			let unit = gameState.getEntityById(unitId);
-			let accessOk = unit.getMetadata(PlayerID, "transport") !== undefined ||
-			               unit.position() && PETRA.getLandAccess(gameState, unit) == targetAccess;
+			const unit = gameState.getEntityById(unitId);
+			const accessOk = unit.getMetadata(PlayerID, "transport") !== undefined ||
+				unit.position() && getLandAccess(gameState, unit) == targetAccess;
 			if (unit && accessOk && attackPlan.isAvailableUnit(gameState, unit))
 			{
 				unit.setMetadata(PlayerID, "plan", attackPlan.name);
-				unit.setMetadata(PlayerID, "role", PETRA.Worker.ROLE_ATTACK);
+				unit.setMetadata(PlayerID, "role", Worker.ROLE_ATTACK);
 				attackPlan.unitCollection.updateEnt(unit);
 			}
 		}
@@ -744,18 +788,18 @@ PETRA.AttackManager.prototype.switchDefenseToAttack = function(gameState, target
 		attackPlan.Abort(gameState);
 		return false;
 	}
-	for (let unit of attackPlan.unitCollection.values())
-		unit.setMetadata(PlayerID, "role", PETRA.Worker.ROLE_ATTACK);
+	for (const unit of attackPlan.unitCollection.values())
+		unit.setMetadata(PlayerID, "role", Worker.ROLE_ATTACK);
 	attackPlan.targetPlayer = target.owner();
 	attackPlan.targetPos = pos;
 	attackPlan.target = target;
-	attackPlan.state = PETRA.AttackPlan.STATE_ARRIVED;
+	attackPlan.state = AttackPlan.STATE_ARRIVED;
 	return true;
 };
 
-PETRA.AttackManager.prototype.Serialize = function()
+AttackManager.prototype.Serialize = function()
 {
-	let properties = {
+	const properties = {
 		"totalNumber": this.totalNumber,
 		"attackNumber": this.attackNumber,
 		"rushNumber": this.rushNumber,
@@ -767,37 +811,37 @@ PETRA.AttackManager.prototype.Serialize = function()
 		"defeated": this.defeated
 	};
 
-	let upcomingAttacks = {};
-	for (let key in this.upcomingAttacks)
+	const upcomingAttacks = {};
+	for (const key in this.upcomingAttacks)
 	{
 		upcomingAttacks[key] = [];
-		for (let attack of this.upcomingAttacks[key])
+		for (const attack of this.upcomingAttacks[key])
 			upcomingAttacks[key].push(attack.Serialize());
 	}
 
-	let startedAttacks = {};
-	for (let key in this.startedAttacks)
+	const startedAttacks = {};
+	for (const key in this.startedAttacks)
 	{
 		startedAttacks[key] = [];
-		for (let attack of this.startedAttacks[key])
+		for (const attack of this.startedAttacks[key])
 			startedAttacks[key].push(attack.Serialize());
 	}
 
 	return { "properties": properties, "upcomingAttacks": upcomingAttacks, "startedAttacks": startedAttacks };
 };
 
-PETRA.AttackManager.prototype.Deserialize = function(gameState, data)
+AttackManager.prototype.Deserialize = function(gameState, data)
 {
-	for (let key in data.properties)
+	for (const key in data.properties)
 		this[key] = data.properties[key];
 
 	this.upcomingAttacks = {};
-	for (let key in data.upcomingAttacks)
+	for (const key in data.upcomingAttacks)
 	{
 		this.upcomingAttacks[key] = [];
-		for (let dataAttack of data.upcomingAttacks[key])
+		for (const dataAttack of data.upcomingAttacks[key])
 		{
-			let attack = new PETRA.AttackPlan(gameState, this.Config, dataAttack.properties.name);
+			const attack = new AttackPlan(gameState, this.Config, dataAttack.properties.name);
 			attack.Deserialize(gameState, dataAttack);
 			attack.init(gameState);
 			this.upcomingAttacks[key].push(attack);
@@ -805,12 +849,12 @@ PETRA.AttackManager.prototype.Deserialize = function(gameState, data)
 	}
 
 	this.startedAttacks = {};
-	for (let key in data.startedAttacks)
+	for (const key in data.startedAttacks)
 	{
 		this.startedAttacks[key] = [];
-		for (let dataAttack of data.startedAttacks[key])
+		for (const dataAttack of data.startedAttacks[key])
 		{
-			let attack = new PETRA.AttackPlan(gameState, this.Config, dataAttack.properties.name);
+			const attack = new AttackPlan(gameState, this.Config, dataAttack.properties.name);
 			attack.Deserialize(gameState, dataAttack);
 			attack.init(gameState);
 			this.startedAttacks[key].push(attack);

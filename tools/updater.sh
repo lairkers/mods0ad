@@ -29,6 +29,7 @@ fi
 ##############################################################################
 for FILE in "${FILES[@]}"
 do
+    rm -rf $INSTALLATION_PATH/$(basename $FILE .zip)
     mkdir -p $INSTALLATION_PATH/$(basename $FILE .zip)
     wget -P $INSTALLATION_PATH -O $INSTALLATION_PATH/$(basename $FILE .zip)/$FILE $SERVER_HTTP/$FILE
 done

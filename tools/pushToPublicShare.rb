@@ -8,7 +8,7 @@ require 'net/http/post/multipart'
 # Argumente parsen
 options = {}
 OptionParser.new do |opts|
-  opts.banner = "Usage: upload_files.rb --server URL --token TOKEN --path PATH file1 file2 ..."
+  opts.banner = "Usage: pushToPublicShare.rb --server URL --token TOKEN --path PATH file1 file2 ..."
 
   opts.on("--server URL", "Server URL (z.B. https://example.com)") { |v| options[:server] = v }
   opts.on("--token TOKEN", "Bearer-Token") { |v| options[:token] = v }

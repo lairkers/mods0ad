@@ -27,8 +27,11 @@ rem ############################################################################
 rem  Download files to installation path
 rem #############################################################################
 for %%f in (%FILES%) do (
-    mkdir -p $INSTALLATION_PATH/%%~nf
+    rmdir /s /q $INSTALLATION_PATH/%%~nf
+    mkdir $INSTALLATION_PATH/%%~nf
     call curl --create-dirs -o "%INSTALLATION_PATH%\%%~nf\%%f" "%SERVER_HTTP%%%f"
 )
 
 echo Done. Enjoy.
+
+pause

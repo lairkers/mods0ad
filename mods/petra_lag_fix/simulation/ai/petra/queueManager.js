@@ -1,3 +1,9 @@
+import * as filters from "simulation/ai/common-api/filters.js";
+import { ResourcesManager } from "simulation/ai/common-api/resources.js";
+import { aiWarn } from "simulation/ai/common-api/utils.js";
+import { Queue } from "simulation/ai/petra/queue.js";
+import { Worker } from "simulation/ai/petra/worker.js";
+
 /**
  * This takes the input queues and picks which items to fund with resources until no more resources are left to distribute.
  *
@@ -19,57 +25,57 @@
  * This system should be improved. It's probably not flexible enough.
  */
 
-PETRA.QueueManager = function(Config, queues)
+export function QueueManager(Config, queues)
 {
 	this.Config = Config;
 	this.queues = queues;
 	this.priorities = {};
-	for (let i in Config.priorities)
+	for (const i in Config.priorities)
 		this.priorities[i] = Config.priorities[i];
 	this.accounts = {};
 
 	// the sorting is updated on priority change.
 	this.queueArrays = [];
-	for (let q in this.queues)
+	for (const q in this.queues)
 	{
-		this.accounts[q] = new API3.Resources();
+		this.accounts[q] = new ResourcesManager();
 		this.queueArrays.push([q, this.queues[q]]);
 	}
-	let priorities = this.priorities;
+	const priorities = this.priorities;
 	this.queueArrays.sort((a, b) => priorities[b[0]] - priorities[a[0]]);
-};
+}
 
-PETRA.QueueManager.prototype.getAvailableResources = function(gameState)
+QueueManager.prototype.getAvailableResources = function(gameState)
 {
-	let resources = gameState.getResources();
-	for (let key in this.queues)
+	const resources = gameState.getResources();
+	for (const key in this.queues)
 		resources.subtract(this.accounts[key]);
 	return resources;
 };
 
-PETRA.QueueManager.prototype.getTotalAccountedResources = function()
+QueueManager.prototype.getTotalAccountedResources = function()
 {
-	let resources = new API3.Resources();
-	for (let key in this.queues)
+	const resources = new ResourcesManager();
+	for (const key in this.queues)
 		resources.add(this.accounts[key]);
 	return resources;
 };
 
-PETRA.QueueManager.prototype.currentNeeds = function(gameState)
+QueueManager.prototype.currentNeeds = function(gameState)
 {
-	let needed = new API3.Resources();
+	const needed = new ResourcesManager();
 	// queueArrays because it's faster.
-	for (let q of this.queueArrays)
+	for (const q of this.queueArrays)
 	{
-		let queue = q[1];
+		const queue = q[1];
 		if (!queue.hasQueuedUnits() || !queue.plans[0].isGo(gameState))
 			continue;
-		let costs = queue.plans[0].getCost();
+		const costs = queue.plans[0].getCost();
 		needed.add(costs);
 	}
 	// get out current resources, not removing accounts.
-	let current = gameState.getResources();
-	for (let res of Resources.GetCodes())
+	const current = gameState.getResources();
+	for (const res of Resources.GetCodes())
 		needed[res] = Math.max(0, needed[res] - current[res]);
 
 	return needed;
@@ -77,26 +83,26 @@ PETRA.QueueManager.prototype.currentNeeds = function(gameState)
 
 // calculate the gather rates we'd want to be able to start all elements in our queues
 // TODO: many things.
-PETRA.QueueManager.prototype.wantedGatherRates = function(gameState)
+QueueManager.prototype.wantedGatherRates = function(gameState)
 {
 	// default values for first turn when we have not yet set our queues.
 	if (gameState.ai.playedTurn === 0)
 	{
-		let ret = {};
-		for (let res of Resources.GetCodes())
+		const ret = {};
+		for (const res of Resources.GetCodes())
 			ret[res] = this.Config.queues.firstTurn[res] || this.Config.queues.firstTurn.default;
 		return ret;
 	}
 
 	// get out current resources, not removing accounts.
-	let current = gameState.getResources();
+	const current = gameState.getResources();
 	// short queue is the first item of a queue, assumed to be ready in 30s
 	// medium queue is the second item of a queue, assumed to be ready in 60s
 	// long queue contains the isGo=false items, assumed to be ready in 300s
-	let totalShort = {};
-	let totalMedium = {};
-	let totalLong = {};
-	for (let res of Resources.GetCodes())
+	const totalShort = {};
+	const totalMedium = {};
+	const totalLong = {};
+	for (const res of Resources.GetCodes())
 	{
 		totalShort[res] = this.Config.queues.short[res] || this.Config.queues.short.default;
 		totalMedium[res] = this.Config.queues.medium[res] || this.Config.queues.medium.default;
@@ -104,16 +110,16 @@ PETRA.QueueManager.prototype.wantedGatherRates = function(gameState)
 	}
 	let total;
 	// queueArrays because it's faster.
-	for (let q of this.queueArrays)
+	for (const q of this.queueArrays)
 	{
-		let queue = q[1];
+		const queue = q[1];
 		if (queue.paused)
 			continue;
 		for (let j = 0; j < queue.length(); ++j)
 		{
 			if (j > 1)
 				break;
-			let cost = queue.plans[j].getCost();
+			const cost = queue.plans[j].getCost();
 			if (queue.plans[j].isGo(gameState))
 			{
 				if (j === 0)
@@ -123,16 +129,16 @@ PETRA.QueueManager.prototype.wantedGatherRates = function(gameState)
 			}
 			else
 				total = totalLong;
-			for (let type in total)
+			for (const type in total)
 				total[type] += cost[type];
 			if (!queue.plans[j].isGo(gameState))
 				break;
 		}
 	}
 	// global rates
-	let rates = {};
+	const rates = {};
 	let diff;
-	for (let res of Resources.GetCodes())
+	for (const res of Resources.GetCodes())
 	{
 		if (current[res] > 0)
 		{
@@ -154,55 +160,61 @@ PETRA.QueueManager.prototype.wantedGatherRates = function(gameState)
 	return rates;
 };
 
-PETRA.QueueManager.prototype.printQueues = function(gameState)
+QueueManager.prototype.printQueues = function(gameState)
 {
 	let numWorkers = 0;
-	gameState.getOwnUnits().forEach(ent => {
-		if (ent.getMetadata(PlayerID, "role") === PETRA.Worker.ROLE_WORKER && ent.getMetadata(PlayerID, "plan") === undefined)
-			numWorkers++;
-	});
-	API3.warn("---------- QUEUES ------------ with pop " + gameState.getPopulation() + " and workers " + numWorkers);
-	for (let i in this.queues)
+	gameState.getOwnUnits().forEach(ent =>
 	{
-		let q = this.queues[i];
+		if (ent.getMetadata(PlayerID, "role") === Worker.ROLE_WORKER &&
+			ent.getMetadata(PlayerID, "plan") === undefined)
+		{
+			numWorkers++;
+		}
+	});
+	aiWarn("---------- QUEUES ------------ with pop " + gameState.getPopulation() + " and workers " +
+		numWorkers);
+	for (const i in this.queues)
+	{
+		const q = this.queues[i];
 		if (q.hasQueuedUnits())
 		{
-			API3.warn(i + ": ( with priority " + this.priorities[i] +" and accounts " + uneval(this.accounts[i]) +")");
-			API3.warn(" while maxAccountWanted(0.6) is " + uneval(q.maxAccountWanted(gameState, 0.6)));
+			aiWarn(i + ": ( with priority " + this.priorities[i] +" and accounts " +
+				uneval(this.accounts[i]) +")");
+			aiWarn(" while maxAccountWanted(0.6) is " + uneval(q.maxAccountWanted(gameState, 0.6)));
 		}
-		for (let plan of q.plans)
+		for (const plan of q.plans)
 		{
 			let qStr = "     " + plan.type + " ";
 			if (plan.number)
 				qStr += "x" + plan.number;
 			qStr += "   isGo " + plan.isGo(gameState);
-			API3.warn(qStr);
+			aiWarn(qStr);
 		}
 	}
-	API3.warn("Accounts");
-	for (let p in this.accounts)
-	    API3.warn(p + ": " + uneval(this.accounts[p]));
-	API3.warn("Current Resources: " + uneval(gameState.getResources()));
-	API3.warn("Available Resources: " + uneval(this.getAvailableResources(gameState)));
-	API3.warn("Wanted Gather Rates: " + uneval(gameState.ai.HQ.GetWantedGatherRates(gameState)));
-	API3.warn("Current Gather Rates: " + uneval(gameState.ai.HQ.GetCurrentGatherRates(gameState)));
-	API3.warn("Most needed resources: " + uneval(gameState.ai.HQ.pickMostNeededResources(gameState)));
-	API3.warn("------------------------------------");
+	aiWarn("Accounts");
+	for (const p in this.accounts)
+		aiWarn(p + ": " + uneval(this.accounts[p]));
+	aiWarn("Current Resources: " + uneval(gameState.getResources()));
+	aiWarn("Available Resources: " + uneval(this.getAvailableResources(gameState)));
+	aiWarn("Wanted Gather Rates: " + uneval(gameState.ai.HQ.GetWantedGatherRates(gameState)));
+	aiWarn("Current Gather Rates: " + uneval(gameState.ai.HQ.GetCurrentGatherRates(gameState)));
+	aiWarn("Most needed resources: " + uneval(gameState.ai.HQ.pickMostNeededResources(gameState)));
+	aiWarn("------------------------------------");
 };
 
-PETRA.QueueManager.prototype.clear = function()
+QueueManager.prototype.clear = function()
 {
-	for (let i in this.queues)
+	for (const i in this.queues)
 		this.queues[i].empty();
 };
 
 /**
  * set accounts of queue i from the unaccounted resources
  */
-PETRA.QueueManager.prototype.setAccounts = function(gameState, cost, i)
+QueueManager.prototype.setAccounts = function(gameState, cost, i)
 {
-	let available = this.getAvailableResources(gameState);
-	for (let res of Resources.GetCodes())
+	const available = this.getAvailableResources(gameState);
+	for (const res of Resources.GetCodes())
 	{
 		if (this.accounts[i][res] >= cost[res])
 			continue;
@@ -213,13 +225,13 @@ PETRA.QueueManager.prototype.setAccounts = function(gameState, cost, i)
 /**
  * transfer accounts from queue i to queue j
  */
-PETRA.QueueManager.prototype.transferAccounts = function(cost, i, j)
+QueueManager.prototype.transferAccounts = function(cost, i, j)
 {
-	for (let res of Resources.GetCodes())
+	for (const res of Resources.GetCodes())
 	{
 		if (this.accounts[j][res] >= cost[res])
 			continue;
-		let diff = Math.min(this.accounts[i][res], cost[res] - this.accounts[j][res]);
+		const diff = Math.min(this.accounts[i][res], cost[res] - this.accounts[j][res]);
 		this.accounts[i][res] -= diff;
 		this.accounts[j][res] += diff;
 	}
@@ -228,17 +240,17 @@ PETRA.QueueManager.prototype.transferAccounts = function(cost, i, j)
 /**
  * distribute the resources between the different queues according to their priorities
  */
-PETRA.QueueManager.prototype.distributeResources = function(gameState)
+QueueManager.prototype.distributeResources = function(gameState)
 {
-	let availableRes = this.getAvailableResources(gameState);
-	for (let res of Resources.GetCodes())
+	const availableRes = this.getAvailableResources(gameState);
+	for (const res of Resources.GetCodes())
 	{
 		if (availableRes[res] < 0)    // rescale the accounts if we've spent resources already accounted (e.g. by bartering)
 		{
-			let total = gameState.getResources()[res];
-			let scale = total / (total - availableRes[res]);
+			const total = gameState.getResources()[res];
+			const scale = total / (total - availableRes[res]);
 			availableRes[res] = total;
-			for (let j in this.queues)
+			for (const j in this.queues)
 			{
 				this.accounts[j][res] = Math.floor(scale * this.accounts[j][res]);
 				availableRes[res] -= this.accounts[j][res];
@@ -252,8 +264,8 @@ PETRA.QueueManager.prototype.distributeResources = function(gameState)
 		}
 
 		let totalPriority = 0;
-		let tempPrio = {};
-		let maxNeed = {};
+		const tempPrio = {};
+		const maxNeed = {};
 		// Okay so this is where it gets complicated.
 		// If a queue requires "res" for the next elements (in the queue)
 		// And the account is not high enough for it.
@@ -263,10 +275,10 @@ PETRA.QueueManager.prototype.distributeResources = function(gameState)
 		//	-queues accounts are capped at "resources for the first + 60% of the next"
 		// This avoids getting a high priority queue with many elements hogging all of one resource
 		// uselessly while it awaits for other resources.
-		for (let j in this.queues)
+		for (const j in this.queues)
 		{
 			// returns exactly the correct amount, ie 0 if we're not go.
-			let queueCost = this.queues[j].maxAccountWanted(gameState, 0.6);
+			const queueCost = this.queues[j].maxAccountWanted(gameState, 0.6);
 			if (this.queues[j].hasQueuedUnits() && this.accounts[j][res] < queueCost[res] && !this.queues[j].paused)
 			{
 				// adding us to the list of queues that need an update.
@@ -289,7 +301,7 @@ PETRA.QueueManager.prototype.distributeResources = function(gameState)
 		// But we'll sometimes allow less if that would overflow.
 		let available = availableRes[res];
 		let missing = false;
-		for (let j in tempPrio)
+		for (const j in tempPrio)
 		{
 			// we'll add at much what can be allowed to this queue.
 			let toAdd = Math.floor(availableRes[res] * tempPrio[j]/totalPriority);
@@ -303,9 +315,9 @@ PETRA.QueueManager.prototype.distributeResources = function(gameState)
 		}
 		if (missing && available > 0)   // distribute the rest (due to floor) in any queue
 		{
-			for (let j in tempPrio)
+			for (const j in tempPrio)
 			{
-				let toAdd = Math.min(maxNeed[j], available);
+				const toAdd = Math.min(maxNeed[j], available);
 				this.accounts[j][res] += toAdd;
 				available -= toAdd;
 				if (available <= 0)
@@ -313,56 +325,59 @@ PETRA.QueueManager.prototype.distributeResources = function(gameState)
 			}
 		}
 		if (available < 0)
-			API3.warn("Petra: problem with remaining " + res + " in queueManager " + available);
+			aiWarn("Petra: problem with remaining " + res + " in queueManager " + available);
 	}
 };
 
-PETRA.QueueManager.prototype.switchResource = function(gameState, res)
+QueueManager.prototype.switchResource = function(gameState, res)
 {
 	// We have no available resources, see if we can't "compact" them in one queue.
 	// compare queues 2 by 2, and if one with a higher priority could be completed by our amount, give it.
 	// TODO: this isn't perfect compression.
-	for (let j in this.queues)
+	for (const j in this.queues)
 	{
 		if (!this.queues[j].hasQueuedUnits() || this.queues[j].paused)
 			continue;
 
-		let queue = this.queues[j];
-		let queueCost = queue.maxAccountWanted(gameState, 0);
+		const queue = this.queues[j];
+		const queueCost = queue.maxAccountWanted(gameState, 0);
 		if (this.accounts[j][res] >= queueCost[res])
 			continue;
 
-		for (let i in this.queues)
+		for (const i in this.queues)
 		{
 			if (i === j)
 				continue;
-			let otherQueue = this.queues[i];
+			const otherQueue = this.queues[i];
 			if (this.priorities[i] >= this.priorities[j] || otherQueue.switched !== 0)
 				continue;
 			if (this.accounts[j][res] + this.accounts[i][res] < queueCost[res])
 				continue;
 
-			let diff = queueCost[res] - this.accounts[j][res];
+			const diff = queueCost[res] - this.accounts[j][res];
 			this.accounts[j][res] += diff;
 			this.accounts[i][res] -= diff;
 			++otherQueue.switched;
 			if (this.Config.debug > 2)
-				API3.warn ("switching queue " + res + " from " + i + " to " + j + " in amount " + diff);
+			{
+				aiWarn("switching queue " + res + " from " + i + " to " + j + " in amount " +
+					diff);
+			}
 			break;
 		}
 	}
 };
 
 // Start the next item in the queue if we can afford it.
-PETRA.QueueManager.prototype.startNextItems = function(gameState)
+QueueManager.prototype.startNextItems = function(gameState)
 {
-	for (let q of this.queueArrays)
+	for (const q of this.queueArrays)
 	{
-		let name = q[0];
-		let queue = q[1];
+		const name = q[0];
+		const queue = q[1];
 		if (queue.hasQueuedUnits() && !queue.paused)
 		{
-			let item = queue.getNext();
+			const item = queue.getNext();
 			if (this.accounts[name].canAfford(item.getCost()) && item.canStart(gameState))
 			{
 				// canStart may update the cost because of the costMultiplier so we must check it again
@@ -383,16 +398,17 @@ PETRA.QueueManager.prototype.startNextItems = function(gameState)
 	}
 };
 
-PETRA.QueueManager.prototype.update = function(gameState)
+QueueManager.prototype.update = function(gameState)
 {
 	Engine.ProfileStart("Queue Manager");
 
-	for (let i in this.queues)
+	for (const i in this.queues)
 	{
 		this.queues[i].check(gameState);  // do basic sanity checks on the queue
 		if (this.priorities[i] > 0)
 			continue;
-		API3.warn("QueueManager received bad priorities, please report this error: " + uneval(this.priorities));
+		aiWarn("QueueManager received bad priorities, please report this error: " +
+			uneval(this.priorities));
 		this.priorities[i] = 1;  // TODO: make the Queue Manager not die when priorities are zero.
 	}
 
@@ -412,11 +428,11 @@ PETRA.QueueManager.prototype.update = function(gameState)
 };
 
 // Recovery system: if short of workers after an attack, pause (and reset) some queues to favor worker training
-PETRA.QueueManager.prototype.checkPausedQueues = function(gameState)
+QueueManager.prototype.checkPausedQueues = function(gameState)
 {
-	const numWorkers = gameState.countOwnEntitiesAndQueuedWithRole(PETRA.Worker.ROLE_WORKER);
-	let workersMin = Math.min(Math.max(12, 24 * this.Config.popScaling), this.Config.Economy.popPhase2);
-	for (let q in this.queues)
+	const numWorkers = gameState.countOwnEntitiesAndQueuedWithRole(Worker.ROLE_WORKER);
+	const workersMin = Math.min(Math.max(12, 24 * this.Config.popScaling), this.Config.Economy.popPhase2);
+	for (const q in this.queues)
 	{
 		let toBePaused = false;
 		if (!gameState.ai.HQ.hasPotentialBase())
@@ -434,20 +450,29 @@ PETRA.QueueManager.prototype.checkPausedQueues = function(gameState)
 		if (toBePaused)
 		{
 			if (q == "field" && gameState.ai.HQ.needFarm &&
-				!gameState.getOwnStructures().filter(API3.Filters.byClass("Field")).hasEntities())
+				!gameState.getOwnStructures().filter(filters.byClass("Field")).hasEntities())
+			{
 				toBePaused = false;
+			}
 			if (q == "corral" && gameState.ai.HQ.needCorral &&
-				!gameState.getOwnStructures().filter(API3.Filters.byClass("Field")).hasEntities())
+				!gameState.getOwnStructures().filter(filters.byClass("Field")).hasEntities())
+			{
 				toBePaused = false;
+			}
 			if (q == "dock" && gameState.ai.HQ.needFish &&
-				!gameState.getOwnStructures().filter(API3.Filters.byClass("Dock")).hasEntities())
+				!gameState.getOwnStructures().filter(filters.byClass("Dock")).hasEntities())
+			{
 				toBePaused = false;
+			}
 			if (q == "ships" && gameState.ai.HQ.needFish &&
-				!gameState.ai.HQ.navalManager.ships.filter(API3.Filters.byClass("FishingBoat")).hasEntities())
+				!gameState.ai.HQ.navalManager.ships.filter(filters.byClass("FishingBoat"))
+					.hasEntities())
+			{
 				toBePaused = false;
+			}
 		}
 
-		let queue = this.queues[q];
+		const queue = this.queues[q];
 		if (!queue.paused && toBePaused)
 		{
 			queue.paused = true;
@@ -466,14 +491,14 @@ PETRA.QueueManager.prototype.checkPausedQueues = function(gameState)
 	}
 };
 
-PETRA.QueueManager.prototype.canAfford = function(queue, cost)
+QueueManager.prototype.canAfford = function(queue, cost)
 {
 	if (!this.accounts[queue])
 		return false;
 	return this.accounts[queue].canAfford(cost);
 };
 
-PETRA.QueueManager.prototype.pauseQueue = function(queue, scrapAccounts)
+QueueManager.prototype.pauseQueue = function(queue, scrapAccounts)
 {
 	if (!this.queues[queue])
 		return;
@@ -482,15 +507,15 @@ PETRA.QueueManager.prototype.pauseQueue = function(queue, scrapAccounts)
 		this.accounts[queue].reset();
 };
 
-PETRA.QueueManager.prototype.unpauseQueue = function(queue)
+QueueManager.prototype.unpauseQueue = function(queue)
 {
 	if (this.queues[queue])
 		this.queues[queue].paused = false;
 };
 
-PETRA.QueueManager.prototype.pauseAll = function(scrapAccounts, but)
+QueueManager.prototype.pauseAll = function(scrapAccounts, but)
 {
-	for (let q in this.queues)
+	for (const q in this.queues)
 	{
 		if (q == but)
 			continue;
@@ -500,31 +525,31 @@ PETRA.QueueManager.prototype.pauseAll = function(scrapAccounts, but)
 	}
 };
 
-PETRA.QueueManager.prototype.unpauseAll = function(but)
+QueueManager.prototype.unpauseAll = function(but)
 {
-	for (let q in this.queues)
+	for (const q in this.queues)
 		if (q != but)
 			this.queues[q].paused = false;
 };
 
 
-PETRA.QueueManager.prototype.addQueue = function(queueName, priority)
+QueueManager.prototype.addQueue = function(queueName, priority)
 {
 	if (this.queues[queueName] !== undefined)
 		return;
 
-	this.queues[queueName] = new PETRA.Queue();
+	this.queues[queueName] = new Queue();
 	this.priorities[queueName] = priority;
-	this.accounts[queueName] = new API3.Resources();
+	this.accounts[queueName] = new ResourcesManager();
 
 	this.queueArrays = [];
-	for (let q in this.queues)
+	for (const q in this.queues)
 		this.queueArrays.push([q, this.queues[q]]);
-	let priorities = this.priorities;
+	const priorities = this.priorities;
 	this.queueArrays.sort((a, b) => priorities[b[0]] - priorities[a[0]]);
 };
 
-PETRA.QueueManager.prototype.removeQueue = function(queueName)
+QueueManager.prototype.removeQueue = function(queueName)
 {
 	if (this.queues[queueName] === undefined)
 		return;
@@ -534,38 +559,43 @@ PETRA.QueueManager.prototype.removeQueue = function(queueName)
 	delete this.accounts[queueName];
 
 	this.queueArrays = [];
-	for (let q in this.queues)
+	for (const q in this.queues)
 		this.queueArrays.push([q, this.queues[q]]);
-	let priorities = this.priorities;
+	const priorities = this.priorities;
 	this.queueArrays.sort((a, b) => priorities[b[0]] - priorities[a[0]]);
 };
 
-PETRA.QueueManager.prototype.getPriority = function(queueName)
+QueueManager.prototype.getPriority = function(queueName)
 {
 	return this.priorities[queueName];
 };
 
-PETRA.QueueManager.prototype.changePriority = function(queueName, newPriority)
+QueueManager.prototype.changePriority = function(queueName, newPriority)
 {
 	if (this.Config.debug > 1)
-		API3.warn(">>> Priority of queue " + queueName + " changed from " + this.priorities[queueName] + " to " + newPriority);
+	{
+		aiWarn(">>> Priority of queue " + queueName + " changed from " + this.priorities[queueName] +
+			" to " + newPriority);
+	}
 	if (this.queues[queueName] !== undefined)
 		this.priorities[queueName] = newPriority;
-	let priorities = this.priorities;
+	const priorities = this.priorities;
 	this.queueArrays.sort((a, b) => priorities[b[0]] - priorities[a[0]]);
 };
 
-PETRA.QueueManager.prototype.Serialize = function()
+QueueManager.prototype.Serialize = function()
 {
-	let accounts = {};
-	let queues = {};
-	for (let q in this.queues)
+	const accounts = {};
+	const queues = {};
+	for (const q in this.queues)
 	{
 		queues[q] = this.queues[q].Serialize();
 		accounts[q] = this.accounts[q].Serialize();
 		if (this.Config.debug == -100)
-			API3.warn("queueManager serialization: queue " + q + " >>> " +
-				uneval(queues[q]) + " with accounts " + uneval(accounts[q]));
+		{
+			aiWarn("queueManager serialization: queue " + q + " >>> " + uneval(queues[q]) +
+				" with accounts " + uneval(accounts[q]));
+		}
 	}
 
 	return {
@@ -575,7 +605,7 @@ PETRA.QueueManager.prototype.Serialize = function()
 	};
 };
 
-PETRA.QueueManager.prototype.Deserialize = function(gameState, data)
+QueueManager.prototype.Deserialize = function(gameState, data)
 {
 	this.priorities = data.priorities;
 	this.queues = {};
@@ -583,11 +613,11 @@ PETRA.QueueManager.prototype.Deserialize = function(gameState, data)
 
 	// the sorting is updated on priority change.
 	this.queueArrays = [];
-	for (let q in data.queues)
+	for (const q in data.queues)
 	{
-		this.queues[q] = new PETRA.Queue();
+		this.queues[q] = new Queue();
 		this.queues[q].Deserialize(gameState, data.queues[q]);
-		this.accounts[q] = new API3.Resources();
+		this.accounts[q] = new ResourcesManager();
 		this.accounts[q].Deserialize(data.accounts[q]);
 		this.queueArrays.push([q, this.queues[q]]);
 	}

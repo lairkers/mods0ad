@@ -6,7 +6,7 @@ Engine.LoadLibrary("rmgen");
 Engine.LoadLibrary("rmgen-common");
 Engine.LoadLibrary("heightmap");
 
-function* GenerateMap(mapSettings)
+export function* generateMap(mapSettings)
 {
 	TILE_CENTERED_HEIGHT_MAP = true;
 
@@ -496,7 +496,7 @@ function* GenerateMap(mapSettings)
 		playerPosition.splice(centerPlayerID_index, 0, centerPlayerPosition);
 	}
 
-	if (!isNomad())
+	if (!mapSettings.Nomad)
 	{
 		g_Map.log("Marking player positions");
 		for (const position of playerPosition)
@@ -1013,6 +1013,8 @@ function* GenerateMap(mapSettings)
 			],
 			new StaticConstraint(avoidClasses(clPath, 0)));
 
+	//g_Map.placeEntityPassable(template.templateName, this.playerID, Vector2D.average(obstructionCorners), -buildingAngle);
+
 	let entitiesGates;
 	if (placeNapataWall)
 	{
@@ -1347,7 +1349,7 @@ function* GenerateMap(mapSettings)
 				[areaDesert]);
 	}
 
-	for (let i = 0; i < (isNomad() ? scaleByMapSize(6, 16) : scaleByMapSize(0, 8)); ++i)
+	for (let i = 0; i < (mapSettings.Nomad ? scaleByMapSize(6, 16) : scaleByMapSize(0, 8)); ++i)
 	{
 		let mineObjectsBiome = pickRandom(mineObjectsPerBiome);
 		createObjectGroupsByAreas(
@@ -1411,7 +1413,7 @@ function* GenerateMap(mapSettings)
 		50,
 		[areaDesert]);
 
-	if (!isNomad())
+	if (!mapSettings.Nomad)
 	{
 		g_Map.log("Creating lions");
 		createObjectGroupsByAreas(
@@ -1433,7 +1435,7 @@ function* GenerateMap(mapSettings)
 		[areaDesert]);
 
 	g_Map.log("Creating crocodiles");
-	if (!isNomad())
+	if (!mapSettings.Nomad)
 		createObjectGroupsByAreas(
 			new SimpleGroup([new SimpleObject(oCrocodile, 2, 3, 3, 5)], true, clFood),
 			0,
@@ -1530,7 +1532,7 @@ function* GenerateMap(mapSettings)
 	//    [areaWater]);
 
 	const avoidCollisionsPyramids = new StaticConstraint([avoidCollisions, new NearTileClassConstraint(clPyramid, 10)]);
-	if (!isNomad())
+	if (!mapSettings.Nomad)
 	{
 		g_Map.log("Placing soldiers near pyramids");
 		createObjectGroupsByAreas(
@@ -1573,23 +1575,23 @@ function* GenerateMap(mapSettings)
 		500,
 		[areaPaths]);
 
-	g_Map.log("Placing handcarts on the paths");
-	createObjectGroupsByAreas(
-		new SimpleGroup([new SimpleObject(aHandcart, 1, 1, 1, 1)], true, clDecorative),
-		0,
-		[pathBorderConstraint, avoidClasses(clDecorative, 10)],
-		scaleByMapSize(0, 5),
-		250,
-		[areaPaths]);
+	//g_Map.log("Placing handcarts on the paths");
+	//createObjectGroupsByAreas(
+	//	new SimpleGroup([new SimpleObject(aHandcart, 1, 1, 1, 1)], true, clDecorative),
+	//	0,
+	//	[pathBorderConstraint, avoidClasses(clDecorative, 10)],
+	//	scaleByMapSize(0, 5),
+	//	250,
+	//	[areaPaths]);
 
-	g_Map.log("Placing fence in fertile land");
-	createObjectGroupsByAreas(
-		new SimpleGroup([new SimpleObject(aPlotFence, 1, 1, 1, 1)], true, clDecorative),
-		0,
-		new StaticConstraint([avoidCollisions, avoidClasses(clWater, 6, clDecorative, 10)]),
-		scaleByMapSize(1, 10),
-		250,
-		[areaFertileLand]);
+	//g_Map.log("Placing fence in fertile land");
+	//createObjectGroupsByAreas(
+	//	new SimpleGroup([new SimpleObject(aPlotFence, 1, 1, 1, 1)], true, clDecorative),
+	//	0,
+	//	new StaticConstraint([avoidCollisions, avoidClasses(clWater, 6, clDecorative, 10)]),
+	//	scaleByMapSize(1, 10),
+	//	250,
+	//	[areaFertileLand]);
 
 	g_Map.log("Creating fish");
 	createObjectGroups(

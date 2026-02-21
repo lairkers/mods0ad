@@ -558,8 +558,6 @@ Trigger.prototype.JebelBarkal_Init = function()
     this.JebelBarkal_StartAttackTimer(jebelBarkal_firstAttackTime(this.GetDifficulty(), isNomad));
     this.JebelBarkal_StartCityExpansionTimer(jebelBarkal_firstCityExpansionTime(this.GetDifficulty()));
     
-    this.JebelBarkal_SetApocalypticRidersStartTime(this.GetDifficulty());
-    
     this.JebelBarkal_rebuildCity_unfinishedBuildings = [];
 };
 
@@ -597,12 +595,6 @@ Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
     // Keep track of population limit for attackers
     this.jebelBarkal_attackerUnits = [];
 
-    // Keep track of apocalyptic riders
-    this.numApocalypticRiders = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers().length;
-    this.jebelBarkal_apocalypticRiders = [];
-    for (let i = 0; i < this.numApocalypticRiders; i ++)
-        this.jebelBarkal_apocalypticRiders[i] = 0;
-
     // Array of entityIDs where patrol groups can spawn
     this.jebelBarkal_patrolGroupSpawnPoints = TriggerHelper.GetPlayerEntitiesByClass(
         jebelBarkal_playerID,
@@ -618,11 +610,6 @@ Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
     this.numInitialSpawnPoints = this.jebelBarkal_attackerGroupSpawnPoints.length;
 
     this.debugLog("Attacker spawn points: " + uneval(this.jebelBarkal_attackerGroupSpawnPoints));
-    
-    // Array of entityIDs where apocalyptic riders can spawn                                                        // TODO: Change to other spawn points
-    this.jebelBarkal_apocalypticRidersSpawnPoints = TriggerHelper.GetPlayerEntitiesByClass(
-        jebelBarkal_playerID,
-        "Wonder");
         
     // Save number of walls to detect if 3 are broken
     this.jebelBarkal_escalatingDefense_walls = TriggerHelper.GetPlayerEntitiesByClass(
@@ -634,21 +621,6 @@ Trigger.prototype.JebelBarkal_Init_TrackUnits = function()
     // Save that game is not yet won
     this.jebelBarkal_won = false;
 };
-
-Trigger.prototype.JebelBarkal_SetApocalypticRidersStartTime = function(difficulty)
-{                                                                       
-    let startTimes = 
-        [
-            [99, 99],      /* Very easy */
-            [45, 60],      /* Easy */
-            [35, 50],      /* Medium */
-            [25, 35],      /* Hard */
-            [20, 30],      /* Very hard */
-        ];
-    let startTime = startTimes[difficulty - 1];
-    this.apocalypticRidersStartTime = 999; //randFloat(startTime[0], startTime[1]);                           // FIXME: deactivated until fully implemented
-    this.jebelBarkal_apocalypticRidersMsg = true
-}
 
 Trigger.prototype.JebelBarkal_SetDefenderStance = function()
 {
@@ -1001,7 +973,6 @@ Trigger.prototype.JebelBarkal_OwnershipChange_KeepTrackOfUnits = function(data)
         this.jebelBarkal_ritualHealers,
         this.jebelBarkal_patrolGroupSpawnPoints,
         this.jebelBarkal_attackerGroupSpawnPoints,
-        this.jebelBarkal_apocalypticRidersSpawnPoints,
         this.jebelBarkal_attackerUnits,
         ...this.jebelBarkal_patrolingUnits,
     ];
@@ -1014,57 +985,6 @@ Trigger.prototype.JebelBarkal_OwnershipChange_KeepTrackOfUnits = function(data)
     }
 
     this.jebelBarkal_patrolingUnits = this.jebelBarkal_patrolingUnits.filter(entities => entities.length);
-}
-
-Trigger.prototype.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn = function(data)                                                    /* Apocalyptic riders */
-{                                  
-    if (TriggerHelper.GetMinutes() < this.apocalypticRidersStartTime)
-        return;
-
-    let activePlayers = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetActivePlayers();
-    for (let activePlayer of activePlayers)
-    {
-        
-        if ((this.jebelBarkal_apocalypticRiders[activePlayer - 1] != data.entity) && /* Only pass if apocalyptic rider is the newly dead unit */
-            (this.jebelBarkal_apocalypticRiders[activePlayer - 1] != 0))             /* OR Initial value */
-            continue;
-            
-        if (this.jebelBarkal_apocalypticRidersSpawnPoints.length == 0)
-            continue;
-            
-        let targets = TriggerHelper.GetPlayerEntitiesByClass(activePlayer, "CivCentre");
-        if (targets.length == 0)/* Do not spawn riders for (almost) dead players */
-            continue;
-        
-        if (this.jebelBarkal_apocalypticRidersMsg)
-            Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-                "message": "Apokalyptische Reiter am Horizont!",
-                "players": [-1, 0, activePlayer],
-                "translateMessage": false
-            });
-        this.jebelBarkal_apocalypticRidersMsg = false
-        
-        /* Spawn new apocalyptic rider and give command to attack */
-        let spawnedEntities = TriggerHelper.SpawnUnits(
-            this.jebelBarkal_apocalypticRidersSpawnPoints[0],
-            pickRandom(jebelBarkal_templates.champion_cavalry),
-            1,
-            jebelBarkal_playerID);
-        this.jebelBarkal_apocalypticRiders[activePlayer - 1] = spawnedEntities[0];
-        
-        let pos = TriggerHelper.GetEntityPosition2D(pickRandom(targets));
-        ProcessCommand(jebelBarkal_playerID, {
-            "type": "patrol",
-            "entities": spawnedEntities,
-            "x": pos.x,
-            "z": pos.y,
-            "targetClasses": {
-                "attack": "Unit+!Ship"
-            },
-            "queued": true,
-            "allowCapture": false
-        });
-    };
 }
 
 Trigger.prototype.JebelBarkal_OwnershipChange_DetectEscalatingDefense = function(data)                                                    /* Escalating defense */
@@ -1156,6 +1076,7 @@ Trigger.prototype.JebelBarkal_OwnershipChange_RebuildCity_core = function()
     const arsenal = "structures/kush/arsenal";
     const rebuild_templates = [
         wonder,
+        civic, civic,
         fortress, fortress,
         temple, temple, temple,
         stable, stable, stable, stable,
@@ -1187,7 +1108,6 @@ Trigger.prototype.JebelBarkal_OwnershipChange = function(data)
         return;
     this.JebelBarkal_OwnershipChange_DetectWin(data);
     this.JebelBarkal_OwnershipChange_DetectEscalatingDefense(data);
-    this.JebelBarkal_OwnershipChange_AssertApocalypticRidersRespawn(data);
     this.JebelBarkal_OwnershipChange_RebuildCity(data);
     this.JebelBarkal_OwnershipChange_KeepTrackOfUnits(data);
 };

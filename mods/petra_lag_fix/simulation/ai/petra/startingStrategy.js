@@ -1,13 +1,23 @@
+import * as filters from "simulation/ai/common-api/filters.js";
+import { ResourcesManager } from "simulation/ai/common-api/resources.js";
+import { SquareVectorDistance, aiWarn } from "simulation/ai/common-api/utils.js";
+import { Config } from "simulation/ai/petra/config.js";
+import * as difficulty from "simulation/ai/petra/difficultyLevel.js";
+import { gatherTreasure, getHolder, getLandAccess, isFastMoving } from
+	"simulation/ai/petra/entityExtend.js";
+import { Headquarters } from "simulation/ai/petra/headquarters.js";
+import { ConstructionPlan } from "simulation/ai/petra/queueplanBuilding.js";
+
 /**
  * Determines the strategy to adopt when starting a new game,
  * depending on the initial conditions
  */
 
-PETRA.HQ.prototype.gameAnalysis = function(gameState)
+Headquarters.prototype.gameAnalysis = function(gameState)
 {
 	// Analysis of the terrain and the different access regions
 	if (!this.regionAnalysis(gameState))
-		return;
+		return false;
 
 	this.attackManager.init(gameState);
 	this.buildManager.init(gameState);
@@ -27,16 +37,16 @@ PETRA.HQ.prototype.gameAnalysis = function(gameState)
 
 
 	// Sandbox difficulty should not try to expand
-	this.canExpand = this.Config.difficulty != PETRA.DIFFICULTY_SANDBOX;
+	this.canExpand = this.Config.difficulty != difficulty.SANDBOX;
 	// If no base yet, check if we can construct one. If not, dispatch our units to possible tasks/attacks
 	this.canBuildUnits = true;
-	if (!gameState.getOwnStructures().filter(API3.Filters.byClass("CivCentre")).hasEntities())
+	if (!gameState.getOwnStructures().filter(filters.byClass("CivCentre")).hasEntities())
 	{
-		let template = gameState.applyCiv("structures/{civ}/civil_centre");
+		const template = gameState.applyCiv("structures/{civ}/civil_centre");
 		if (!gameState.isTemplateAvailable(template) || !gameState.getTemplate(template).available(gameState))
 		{
 			if (this.Config.debug > 1)
-				API3.warn(" this AI is unable to produce any units");
+				aiWarn(" this AI is unable to produce any units");
 			this.canBuildUnits = false;
 			this.dispatchUnits(gameState);
 		}
@@ -47,46 +57,51 @@ PETRA.HQ.prototype.gameAnalysis = function(gameState)
 	// configure our first base strategy
 	if (this.hasPotentialBase())
 		this.configFirstBase(gameState);
+
+	return true;
 };
 
 /**
  * Assign the starting entities to the different bases
  */
-PETRA.HQ.prototype.assignStartingEntities = function(gameState)
+Headquarters.prototype.assignStartingEntities = function(gameState)
 {
-	for (let ent of gameState.getOwnEntities().values())
+	for (const ent of gameState.getOwnEntities().values())
 	{
 		// do not affect merchant ship immediately to trade as they may-be useful for transport
 		if (ent.hasClasses(["Trader+!Ship"]))
 			this.tradeManager.assignTrader(ent);
 
-		let pos = ent.position();
+		const pos = ent.position();
 		if (!pos)
 		{
 			// TODO should support recursive garrisoning. Make a warning for now
 			if (ent.isGarrisonHolder() && ent.garrisoned().length)
-				API3.warn("Petra warning: support for garrisoned units inside garrisoned holders not yet implemented");
+			{
+				aiWarn("Petra warning: support for garrisoned units inside garrisoned holders " +
+					"not yet implemented");
+			}
 			continue;
 		}
 
 		// make sure we have not rejected small regions with units (TODO should probably also check with other non-gaia units)
-		let gamepos = gameState.ai.accessibility.gamePosToMapPos(pos);
-		let index = gamepos[0] + gamepos[1]*gameState.ai.accessibility.width;
-		let land = gameState.ai.accessibility.landPassMap[index];
+		const gamepos = gameState.ai.accessibility.gamePosToMapPos(pos);
+		const index = gamepos[0] + gamepos[1]*gameState.ai.accessibility.width;
+		const land = gameState.ai.accessibility.landPassMap[index];
 		if (land > 1 && !this.landRegions[land])
 			this.landRegions[land] = true;
-		let sea = gameState.ai.accessibility.navalPassMap[index];
+		const sea = gameState.ai.accessibility.navalPassMap[index];
 		if (sea > 1 && !this.navalRegions[sea])
 			this.navalRegions[sea] = true;
 
 		// if garrisoned units inside, ungarrison them except if a ship in which case we will make a transport
 		// when a construction will start (see createTransportIfNeeded)
 		if (ent.isGarrisonHolder() && ent.garrisoned().length && !ent.hasClass("Ship"))
-			for (let id of ent.garrisoned())
+			for (const id of ent.garrisoned())
 				ent.unload(id);
 
-		let territorypos = this.territoryMap.gamePosToMapPos(pos);
-		let territoryIndex = territorypos[0] + territorypos[1]*this.territoryMap.width;
+		const territorypos = this.territoryMap.gamePosToMapPos(pos);
+		const territoryIndex = territorypos[0] + territorypos[1]*this.territoryMap.width;
 
 		this.basesManager.assignEntity(gameState, ent, territoryIndex);
 	}
@@ -96,15 +111,15 @@ PETRA.HQ.prototype.assignStartingEntities = function(gameState)
  * determine the main land Index (or water index if none)
  * as well as the list of allowed (land andf water) regions
  */
-PETRA.HQ.prototype.regionAnalysis = function(gameState)
+Headquarters.prototype.regionAnalysis = function(gameState)
 {
-	let accessibility = gameState.ai.accessibility;
+	const accessibility = gameState.ai.accessibility;
 	let landIndex;
 	let seaIndex;
-	let ccEnts = gameState.getOwnStructures().filter(API3.Filters.byClass("CivCentre"));
-	for (let cc of ccEnts.values())
+	const ccEnts = gameState.getOwnStructures().filter(filters.byClass("CivCentre"));
+	for (const cc of ccEnts.values())
 	{
-		let land = accessibility.getAccessValue(cc.position());
+		const land = accessibility.getAccessValue(cc.position());
 		if (land > 1)
 		{
 			landIndex = land;
@@ -113,33 +128,33 @@ PETRA.HQ.prototype.regionAnalysis = function(gameState)
 	}
 	if (!landIndex)
 	{
-		let civ = gameState.getPlayerCiv();
-		for (let ent of gameState.getOwnEntities().values())
+		const civ = gameState.getPlayerCiv();
+		for (const ent of gameState.getOwnEntities().values())
 		{
 			if (!ent.position() || !ent.hasClass("Unit") && !ent.trainableEntities(civ))
 				continue;
-			let land = accessibility.getAccessValue(ent.position());
+			const land = accessibility.getAccessValue(ent.position());
 			if (land > 1)
 			{
 				landIndex = land;
 				break;
 			}
-			let sea = accessibility.getAccessValue(ent.position(), true);
+			const sea = accessibility.getAccessValue(ent.position(), true);
 			if (!seaIndex && sea > 1)
 				seaIndex = sea;
 		}
 	}
 	if (!landIndex && !seaIndex)
 	{
-		API3.warn("Petra error: it does not know how to interpret this map");
+		aiWarn("Petra error: it does not know how to interpret this map");
 		return false;
 	}
 
-	let passabilityMap = gameState.getPassabilityMap();
-	let totalSize = passabilityMap.width * passabilityMap.width;
-	let minLandSize = Math.floor(0.1*totalSize);
-	let minWaterSize = Math.floor(0.2*totalSize);
-	let cellArea = passabilityMap.cellSize * passabilityMap.cellSize;
+	const passabilityMap = gameState.getPassabilityMap();
+	const totalSize = passabilityMap.width * passabilityMap.width;
+	const minLandSize = Math.floor(0.1*totalSize);
+	const minWaterSize = Math.floor(0.2*totalSize);
+	const cellArea = passabilityMap.cellSize * passabilityMap.cellSize;
 	for (let i = 0; i < accessibility.regionSize.length; ++i)
 	{
 		if (landIndex && i == landIndex)
@@ -148,7 +163,7 @@ PETRA.HQ.prototype.regionAnalysis = function(gameState)
 		{
 			if (landIndex)
 			{
-				let sea = this.getSeaBetweenIndices(gameState, landIndex, i);
+				const sea = this.getSeaBetweenIndices(gameState, landIndex, i);
 				if (sea && (accessibility.regionSize[i] > minLandSize || accessibility.regionSize[sea] > minWaterSize))
 				{
 					this.navalMap = true;
@@ -158,7 +173,7 @@ PETRA.HQ.prototype.regionAnalysis = function(gameState)
 			}
 			else
 			{
-				let traject = accessibility.getTrajectToIndex(seaIndex, i);
+				const traject = accessibility.getTrajectToIndex(seaIndex, i);
 				if (traject && traject.length === 2)
 				{
 					this.navalMap = true;
@@ -178,11 +193,14 @@ PETRA.HQ.prototype.regionAnalysis = function(gameState)
 
 	if (this.Config.debug < 3)
 		return true;
-	for (let region in this.landRegions)
-		API3.warn(" >>> zone " + region + " taille " + cellArea*gameState.ai.accessibility.regionSize[region]);
-	API3.warn(" navalMap " + this.navalMap);
-	API3.warn(" landRegions " + uneval(this.landRegions));
-	API3.warn(" navalRegions " + uneval(this.navalRegions));
+	for (const region in this.landRegions)
+	{
+		aiWarn(" >>> zone " + region + " taille " +
+			cellArea * gameState.ai.accessibility.regionSize[region]);
+	}
+	aiWarn(" navalMap " + this.navalMap);
+	aiWarn(" landRegions " + uneval(this.landRegions));
+	aiWarn(" navalRegions " + uneval(this.navalRegions));
 	return true;
 };
 
@@ -190,12 +208,12 @@ PETRA.HQ.prototype.regionAnalysis = function(gameState)
  * load units and buildings from the config files
  * TODO: change that to something dynamic
  */
-PETRA.HQ.prototype.structureAnalysis = function(gameState)
+Headquarters.prototype.structureAnalysis = function(gameState)
 {
-	let civref = gameState.playerData.civ;
-	let civ = civref in this.Config.buildings ? civref : 'default';
+	const civref = gameState.playerData.civ;
+	const civ = civref in this.Config.buildings ? civref : 'default';
 	this.bAdvanced = [];
-	for (let building of this.Config.buildings[civ])
+	for (const building of this.Config.buildings[civ])
 		if (gameState.isTemplateAvailable(gameState.applyCiv(building)))
 			this.bAdvanced.push(gameState.applyCiv(building));
 };
@@ -204,7 +222,7 @@ PETRA.HQ.prototype.structureAnalysis = function(gameState)
  * build our first base
  * if not enough resource, try first to do a dock
  */
-PETRA.HQ.prototype.buildFirstBase = function(gameState)
+Headquarters.prototype.buildFirstBase = function(gameState)
 {
 	if (gameState.ai.queues.civilCentre.hasQueuedUnits())
 		return;
@@ -214,37 +232,37 @@ PETRA.HQ.prototype.buildFirstBase = function(gameState)
 	let template = gameState.getTemplate(templateName);
 	if (!template)
 		return;
-	let total = gameState.getResources();
+	const total = gameState.getResources();
 	let goal = "civil_centre";
-	if (!total.canAfford(new API3.Resources(template.cost())))
+	if (!total.canAfford(new ResourcesManager(template.cost())))
 	{
-		let totalExpected = gameState.getResources();
+		const totalExpected = gameState.getResources();
 		// Check for treasures around available in some maps at startup
-		for (let ent of gameState.getOwnUnits().values())
+		for (const ent of gameState.getOwnUnits().values())
 		{
 			if (!ent.position())
 				continue;
 			// If we can get a treasure around, just do it
 			if (ent.isIdle())
-				PETRA.gatherTreasure(gameState, ent);
+				gatherTreasure(gameState, ent);
 			// Then count the resources from the treasures being collected
-			let treasureId = ent.getMetadata(PlayerID, "treasure");
+			const treasureId = ent.getMetadata(PlayerID, "treasure");
 			if (!treasureId)
 				continue;
-			let treasure = gameState.getEntityById(treasureId);
+			const treasure = gameState.getEntityById(treasureId);
 			if (!treasure)
 				continue;
-			let types = treasure.treasureResources();
-			for (let type in types)
+			const types = treasure.treasureResources();
+			for (const type in types)
 				if (type in totalExpected)
 					totalExpected[type] += types[type];
 			// If we can collect enough resources from these treasures, wait for them.
-			if (totalExpected.canAfford(new API3.Resources(template.cost())))
+			if (totalExpected.canAfford(new ResourcesManager(template.cost())))
 				return;
 		}
 
 		// not enough resource to build a cc, try with a dock to accumulate resources if none yet
-		if (!this.navalManager.docks.filter(API3.Filters.byClass("Dock")).hasEntities())
+		if (!this.navalManager.docks.filter(filters.byClass("Dock")).hasEntities())
 		{
 			if (gameState.ai.queues.dock.hasQueuedUnits())
 				return;
@@ -252,7 +270,7 @@ PETRA.HQ.prototype.buildFirstBase = function(gameState)
 			if (gameState.isTemplateDisabled(templateName))
 				return;
 			template = gameState.getTemplate(templateName);
-			if (!template || !total.canAfford(new API3.Resources(template.cost())))
+			if (!template || !total.canAfford(new ResourcesManager(template.cost())))
 				return;
 			goal = "dock";
 		}
@@ -261,31 +279,31 @@ PETRA.HQ.prototype.buildFirstBase = function(gameState)
 		return;
 
 	// We first choose as startingPoint the point where we have the more units
-	let startingPoint = [];
-	for (let ent of gameState.getOwnUnits().values())
+	const startingPoint = [];
+	for (const ent of gameState.getOwnUnits().values())
 	{
 		if (!ent.hasClass("Worker"))
 			continue;
-		if (PETRA.isFastMoving(ent))
+		if (isFastMoving(ent))
 			continue;
 		let pos = ent.position();
 		if (!pos)
 		{
-			let holder = PETRA.getHolder(gameState, ent);
+			const holder = getHolder(gameState, ent);
 			if (!holder || !holder.position())
 				continue;
 			pos = holder.position();
 		}
-		let gamepos = gameState.ai.accessibility.gamePosToMapPos(pos);
-		let index = gamepos[0] + gamepos[1] * gameState.ai.accessibility.width;
-		let land = gameState.ai.accessibility.landPassMap[index];
-		let sea = gameState.ai.accessibility.navalPassMap[index];
+		const gamepos = gameState.ai.accessibility.gamePosToMapPos(pos);
+		const index = gamepos[0] + gamepos[1] * gameState.ai.accessibility.width;
+		const land = gameState.ai.accessibility.landPassMap[index];
+		const sea = gameState.ai.accessibility.navalPassMap[index];
 		let found = false;
-		for (let point of startingPoint)
+		for (const point of startingPoint)
 		{
 			if (land !== point.land || sea !== point.sea)
 				continue;
-			if (API3.SquareVectorDistance(point.pos, pos) > 2500)
+			if (SquareVectorDistance(point.pos, pos) > 2500)
 				continue;
 			point.weight += 1;
 			found = true;
@@ -304,11 +322,16 @@ PETRA.HQ.prototype.buildFirstBase = function(gameState)
 
 	if (goal == "dock")
 	{
-		let sea = startingPoint[imax].sea > 1 ? startingPoint[imax].sea : undefined;
-		gameState.ai.queues.dock.addPlan(new PETRA.ConstructionPlan(gameState, "structures/{civ}/dock", { "sea": sea, "proximity": startingPoint[imax].pos }));
+		const sea = startingPoint[imax].sea > 1 ? startingPoint[imax].sea : undefined;
+		gameState.ai.queues.dock.addPlan(new ConstructionPlan(gameState, "structures/{civ}/dock",
+			{ "sea": sea, "proximity": startingPoint[imax].pos }));
 	}
 	else
-		gameState.ai.queues.civilCentre.addPlan(new PETRA.ConstructionPlan(gameState, "structures/{civ}/civil_centre", { "base": -1, "resource": "wood", "proximity": startingPoint[imax].pos }));
+	{
+		gameState.ai.queues.civilCentre.addPlan(new ConstructionPlan(gameState,
+			"structures/{civ}/civil_centre",
+			{ "base": -1, "resource": "wood", "proximity": startingPoint[imax].pos }));
+	}
 };
 
 /**
@@ -316,70 +339,77 @@ PETRA.HQ.prototype.buildFirstBase = function(gameState)
  *   - if one of our allies has a cc, affect a small fraction of our army for his defense, the rest will attack
  *   - otherwise all units will attack
  */
-PETRA.HQ.prototype.dispatchUnits = function(gameState)
+Headquarters.prototype.dispatchUnits = function(gameState)
 {
-	let allycc = gameState.getExclusiveAllyEntities().filter(API3.Filters.byClass("CivCentre")).toEntityArray();
+	const allycc = gameState.getExclusiveAllyEntities().filter(filters.byClass("CivCentre"))
+		.toEntityArray();
 	if (allycc.length)
 	{
 		if (this.Config.debug > 1)
-			API3.warn(" We have allied cc " + allycc.length + " and " + gameState.getOwnUnits().length + " units ");
-		let units = gameState.getOwnUnits();
+		{
+			aiWarn(" We have allied cc " + allycc.length + " and " + gameState.getOwnUnits().length +
+				" units ");
+		}
+		const units = gameState.getOwnUnits();
 		let num = Math.max(Math.min(Math.round(0.08*(1+this.Config.personality.cooperative)*units.length), 20), 5);
 		let num1 = Math.floor(num / 2);
 		let num2 = num1;
 		// first pass to affect ranged infantry
-		units.filter(API3.Filters.byClasses(["Infantry+Ranged"])).forEach(ent => {
+		units.filter(filters.byClasses(["Infantry+Ranged"])).forEach(ent =>
+		{
 			if (!num || !num1)
 				return;
 			if (ent.getMetadata(PlayerID, "allied"))
 				return;
-			let access = PETRA.getLandAccess(gameState, ent);
-			for (let cc of allycc)
+			const access = getLandAccess(gameState, ent);
+			for (const cc of allycc)
 			{
-				if (!cc.position() || PETRA.getLandAccess(gameState, cc) != access)
+				if (!cc.position() || getLandAccess(gameState, cc) != access)
 					continue;
 				--num;
 				--num1;
 				ent.setMetadata(PlayerID, "allied", true);
-				let range = 1.5 * cc.footprintRadius();
+				const range = 1.5 * cc.footprintRadius();
 				ent.moveToRange(cc.position()[0], cc.position()[1], range, range + 5);
 				break;
 			}
 		});
 		// second pass to affect melee infantry
-		units.filter(API3.Filters.byClasses(["Infantry+Melee"])).forEach(ent => {
+		units.filter(filters.byClasses(["Infantry+Melee"])).forEach(ent =>
+		{
 			if (!num || !num2)
 				return;
 			if (ent.getMetadata(PlayerID, "allied"))
 				return;
-			let access = PETRA.getLandAccess(gameState, ent);
-			for (let cc of allycc)
+			const access = getLandAccess(gameState, ent);
+			for (const cc of allycc)
 			{
-				if (!cc.position() || PETRA.getLandAccess(gameState, cc) != access)
+				if (!cc.position() || getLandAccess(gameState, cc) != access)
 					continue;
 				--num;
 				--num2;
 				ent.setMetadata(PlayerID, "allied", true);
-				let range = 1.5 * cc.footprintRadius();
+				const range = 1.5 * cc.footprintRadius();
 				ent.moveToRange(cc.position()[0], cc.position()[1], range, range + 5);
 				break;
 			}
 		});
 		// and now complete the affectation, including all support units
-		units.forEach(ent => {
+		units.forEach(ent =>
+		{
 			if (!num && !ent.hasClass("Support"))
 				return;
 			if (ent.getMetadata(PlayerID, "allied"))
 				return;
-			let access = PETRA.getLandAccess(gameState, ent);
-			for (let cc of allycc)
+			const access = getLandAccess(gameState, ent);
+			for (const cc of allycc)
 			{
-				if (!cc.position() || PETRA.getLandAccess(gameState, cc) != access)
+				if (!cc.position() || getLandAccess(gameState, cc) != access)
 					continue;
 				if (!ent.hasClass("Support"))
 					--num;
 				ent.setMetadata(PlayerID, "allied", true);
-				let range = 1.5 * cc.footprintRadius();
+				const range = 1.5 * cc.footprintRadius();
 				ent.moveToRange(cc.position()[0], cc.position()[1], range, range + 5);
 				break;
 			}
@@ -392,7 +422,7 @@ PETRA.HQ.prototype.dispatchUnits = function(gameState)
  *   - if on a small island, favor fishing
  *   - count the available wood resource, and allow rushes only if enough (we should otherwise favor expansion)
  */
-PETRA.HQ.prototype.configFirstBase = function(gameState)
+Headquarters.prototype.configFirstBase = function(gameState)
 {
 	if (!this.hasPotentialBase())
 		return;
@@ -400,8 +430,8 @@ PETRA.HQ.prototype.configFirstBase = function(gameState)
 	this.firstBaseConfig = true;
 
 	let startingSize = 0;
-	let startingLand = [];
-	for (let region in this.landRegions)
+	const startingLand = [];
+	for (const region in this.landRegions)
 	{
 		for (const base of this.baseManagers())
 		{
@@ -412,18 +442,18 @@ PETRA.HQ.prototype.configFirstBase = function(gameState)
 			break;
 		}
 	}
-	let cell = gameState.getPassabilityMap().cellSize;
+	const cell = gameState.getPassabilityMap().cellSize;
 	startingSize = startingSize * cell * cell;
 	if (this.Config.debug > 1)
-		API3.warn("starting size " + startingSize + "(cut at 24000 for fish pushing)");
+		aiWarn("starting size " + startingSize + "(cut at 24000 for fish pushing)");
 	if (startingSize < 25000)
 	{
 		this.saveSpace = true;
 		this.Config.Economy.popForDock = Math.min(this.Config.Economy.popForDock, 16);
-		let num = Math.max(this.Config.Economy.targetNumFishers, 2);
-		for (let land of startingLand)
+		const num = Math.max(this.Config.Economy.targetNumFishers, 2);
+		for (const land of startingLand)
 		{
-			for (let sea of gameState.ai.accessibility.regionLinks[land])
+			for (const sea of gameState.ai.accessibility.regionLinks[land])
 				if (gameState.ai.HQ.navalRegions[sea])
 					this.navalManager.updateFishingBoats(sea, num);
 		}
@@ -454,7 +484,10 @@ PETRA.HQ.prototype.configFirstBase = function(gameState)
 	startingWood += this.getTotalResourceLevel(gameState, ["wood"], ["nearby", "medium", "faraway"]).wood;
 
 	if (this.Config.debug > 1)
-		API3.warn("startingWood: " + startingWood + " (cut at 8500 for no rush and 6000 for saveResources)");
+	{
+		aiWarn("startingWood: " + startingWood +
+			" (cut at 8500 for no rush and 6000 for saveResources)");
+	}
 	if (startingWood < 6000)
 	{
 		this.saveResources = true;
@@ -488,21 +521,26 @@ PETRA.HQ.prototype.configFirstBase = function(gameState)
 		{
 			// if we start with enough workers, put our available resources in this first dropsite
 			// same thing if our pop exceed the allowed one, as we will need several houses
-			let numWorkers = gameState.getOwnUnits().filter(API3.Filters.byClass("Worker")).length;
+			const numWorkers = gameState.getOwnUnits().filter(filters.byClass("Worker")).length;
 			if (numWorkers > 12 && newDP.quality > 60 ||
 				gameState.getPopulation() > gameState.getPopulationLimit() + 20)
 			{
-				const cost = new API3.Resources(gameState.getTemplate(newDP.templateName).cost());
+				const cost = new ResourcesManager(gameState.getTemplate(newDP.templateName).cost());
 				gameState.ai.queueManager.setAccounts(gameState, cost, "dropsites");
 			}
-			gameState.ai.queues.dropsites.addPlan(new PETRA.ConstructionPlan(gameState, newDP.templateName, { "base": this.baseManagers()[0].ID }, newDP.pos));
+			gameState.ai.queues.dropsites.addPlan(new ConstructionPlan(gameState, newDP.templateName,
+				{ "base": this.baseManagers()[0].ID }, newDP.pos));
 		}
 	}
 	// and build immediately a corral if needed
 	if (this.needCorral)
 	{
 		const template = gameState.applyCiv("structures/{civ}/corral");
-		if (!gameState.getOwnEntitiesByClass("Corral", true).hasEntities() && this.canBuild(gameState, template))
-			gameState.ai.queues.corral.addPlan(new PETRA.ConstructionPlan(gameState, template, { "base": this.baseManagers()[0].ID }));
+		if (!gameState.getOwnEntitiesByClass("Corral", true).hasEntities() &&
+			this.canBuild(gameState, template))
+		{
+			gameState.ai.queues.corral.addPlan(
+				new ConstructionPlan(gameState, template, { "base": this.baseManagers()[0].ID }));
+		}
 	}
 };

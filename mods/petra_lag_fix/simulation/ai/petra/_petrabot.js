@@ -1,10 +1,13 @@
-Engine.IncludeModule("common-api");
+import { BaseAI } from "simulation/ai/common-api/baseAI.js";
+import { Entity } from "simulation/ai/common-api/entity.js";
+import { Config } from "simulation/ai/petra/config.js";
+import { Headquarters } from "simulation/ai/petra/headquarters.js";
+import { Queue } from "simulation/ai/petra/queue.js";
+import { QueueManager } from "simulation/ai/petra/queueManager.js";
 
-var PETRA = {};
-
-PETRA.PetraBot = function(settings)
+export function PetraBot(settings)
 {
-	API3.BaseAI.call(this, settings);
+	BaseAI.call(this, settings);
 
 	this.playedTurn = 0;
 	this.elapsedTime = 0;
@@ -16,34 +19,35 @@ PETRA.PetraBot = function(settings)
 		"transports": 1	// transport plans start at 1 because 0 might be used as none
 	};
 
-	this.Config = new PETRA.Config(settings.difficulty, settings.behavior);
+	this.Config = new Config(settings.difficulty, settings.behavior);
 
 	this.savedEvents = {};
-};
+}
 
-PETRA.PetraBot.prototype = Object.create(API3.BaseAI.prototype);
+PetraBot.prototype = Object.create(BaseAI.prototype);
 
-PETRA.PetraBot.prototype.CustomInit = function(gameState)
+PetraBot.prototype.CustomInit = function(gameState)
 {
 	if (this.isDeserialized)
 	{
 		// WARNING: the deserializations should not modify the metadatas infos inside their init functions
+		this.canPlay = this.data.canPlay;
 		this.turn = this.data.turn;
 		this.playedTurn = this.data.playedTurn;
 		this.elapsedTime = this.data.elapsedTime;
 		this.savedEvents = this.data.savedEvents;
-		for (let key in this.savedEvents)
+		for (const key in this.savedEvents)
 		{
-			for (let i in this.savedEvents[key])
+			for (const i in this.savedEvents[key])
 			{
 				if (!this.savedEvents[key][i].entityObj)
 					continue;
-				let evt = this.savedEvents[key][i];
-				let evtmod = {};
-				for (let keyevt in evt)
+				const evt = this.savedEvents[key][i];
+				const evtmod = {};
+				for (const keyevt in evt)
 				{
 					evtmod[keyevt] = evt[keyevt];
-					evtmod.entityObj = new API3.Entity(gameState.sharedScript, evt.entityObj);
+					evtmod.entityObj = new Entity(gameState.sharedScript, evt.entityObj);
 					this.savedEvents[key][i] = evtmod;
 				}
 			}
@@ -51,11 +55,11 @@ PETRA.PetraBot.prototype.CustomInit = function(gameState)
 
 		this.Config.Deserialize(this.data.config);
 
-		this.queueManager = new PETRA.QueueManager(this.Config, {});
+		this.queueManager = new QueueManager(this.Config, {});
 		this.queueManager.Deserialize(gameState, this.data.queueManager);
 		this.queues = this.queueManager.queues;
 
-		this.HQ = new PETRA.HQ(this.Config);
+		this.HQ = new Headquarters(this.Config);
 		this.HQ.init(gameState, this.queues);
 		this.HQ.Deserialize(gameState, this.data.HQ);
 
@@ -72,30 +76,30 @@ PETRA.PetraBot.prototype.CustomInit = function(gameState)
 
 		// this.queues can only be modified by the queue manager or things will go awry.
 		this.queues = {};
-		for (let i in this.Config.priorities)
-			this.queues[i] = new PETRA.Queue();
+		for (const i in this.Config.priorities)
+			this.queues[i] = new Queue();
 
-		this.queueManager = new PETRA.QueueManager(this.Config, this.queues);
+		this.queueManager = new QueueManager(this.Config, this.queues);
 
-		this.HQ = new PETRA.HQ(this.Config);
+		this.HQ = new Headquarters(this.Config);
 
 		this.HQ.init(gameState, this.queues);
 
-		// Analyze our starting position and set a strategy
-		this.HQ.gameAnalysis(gameState);
+		// Try to analyze our starting position and set a strategy.
+		this.canPlay = this.HQ.gameAnalysis(gameState);
 	}
 };
 
-PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
+PetraBot.prototype.OnUpdate = function(sharedScript)
 {
 	if (this.gameFinished || this.gameState.getOwnEntities().length === 0)
 		return;
-    
-	for (let i in this.events)
+
+	for (const i in this.events)
 	{
 		if (i == "AIMetadata")   // not used inside petra
 			continue;
-		if(this.savedEvents[i] !== undefined)
+		if (this.savedEvents[i] !== undefined)
 			this.savedEvents[i] = this.savedEvents[i].concat(this.events[i]);
 		else
 			this.savedEvents[i] = this.events[i];
@@ -109,17 +113,17 @@ PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
 
 		this.playedTurn++;
 
-		if (this.gameState.getOwnEntities().length === 0)
+		if (!this.canPlay)
 		{
 			Engine.ProfileStop();
-			return; // With no entities to control the AI cannot do anything
+			return;
 		}
 
 		this.HQ.update(this.gameState, this.queues, this.savedEvents);
 
 		this.queueManager.update(this.gameState);
 
-		for (let i in this.savedEvents)
+		for (const i in this.savedEvents)
 			this.savedEvents[i] = [];
 
 		Engine.ProfileStop();
@@ -128,19 +132,19 @@ PETRA.PetraBot.prototype.OnUpdate = function(sharedScript)
 	this.turn++;
 };
 
-PETRA.PetraBot.prototype.Serialize = function()
+PetraBot.prototype.Serialize = function()
 {
-	let savedEvents = {};
-	for (let key in this.savedEvents)
+	const savedEvents = {};
+	for (const key in this.savedEvents)
 	{
 		savedEvents[key] = this.savedEvents[key].slice();
-		for (let i in savedEvents[key])
+		for (const i in savedEvents[key])
 		{
 			if (!savedEvents[key][i] || !savedEvents[key][i].entityObj)
 				continue;
-			let evt = savedEvents[key][i];
-			let evtmod = {};
-			for (let keyevt in evt)
+			const evt = savedEvents[key][i];
+			const evtmod = {};
+			for (const keyevt in evt)
 				evtmod[keyevt] = evt[keyevt];
 			evtmod.entityObj = evt.entityObj._entity;
 			savedEvents[key][i] = evtmod;
@@ -148,6 +152,7 @@ PETRA.PetraBot.prototype.Serialize = function()
 	}
 
 	return {
+		"canPlay": this.canPlay,
 		"uniqueIDs": this.uniqueIDs,
 		"turn": this.turn,
 		"playedTurn": this.playedTurn,
@@ -159,7 +164,7 @@ PETRA.PetraBot.prototype.Serialize = function()
 	};
 };
 
-PETRA.PetraBot.prototype.Deserialize = function(data, sharedScript)
+PetraBot.prototype.Deserialize = function(data, sharedScript)
 {
 	this.isDeserialized = true;
 	this.data = data;

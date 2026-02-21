@@ -1,57 +1,63 @@
-PETRA.TrainingPlan = function(gameState, type, metadata, number = 1, maxMerge = 5)
+import * as filters from "simulation/ai/common-api/filters.js";
+import { ResourcesManager } from "simulation/ai/common-api/resources.js";
+import { aiWarn } from "simulation/ai/common-api/utils.js";
+import { QueuePlan } from "simulation/ai/petra/queueplan.js";
+import { Worker } from "simulation/ai/petra/worker.js";
+
+export function TrainingPlan(gameState, type, metadata, number = 1, maxMerge = 5)
 {
-	if (!PETRA.QueuePlan.call(this, gameState, type, metadata))
+	if (!QueuePlan.call(this, gameState, type, metadata))
 	{
-		API3.warn(" Plan training " + type + " canceled");
+		aiWarn(" Plan training " + type + " canceled");
 		return false;
 	}
 
 	// Refine the estimated cost and add pop cost
-	let trainers = this.getBestTrainers(gameState);
-	let trainer = trainers ? trainers[0] : undefined;
-	this.cost = new API3.Resources(this.template.cost(trainer), +this.template._template.Cost.Population);
+	const trainers = this.getBestTrainers(gameState);
+	const trainer = trainers ? trainers[0] : undefined;
+	this.cost = new ResourcesManager(this.template.cost(trainer), +this.template._template.Cost.Population);
 
 	this.category = "unit";
 	this.number = number;
 	this.maxMerge = maxMerge;
 
 	return true;
-};
+}
 
-PETRA.TrainingPlan.prototype = Object.create(PETRA.QueuePlan.prototype);
+TrainingPlan.prototype = Object.create(QueuePlan.prototype);
 
-PETRA.TrainingPlan.prototype.canStart = function(gameState)
+TrainingPlan.prototype.canStart = function(gameState)
 {
 	this.trainers = this.getBestTrainers(gameState);
 	if (!this.trainers)
 		return false;
-	this.cost = new API3.Resources(this.template.cost(this.trainers[0]), +this.template._template.Cost.Population);
+	this.cost = new ResourcesManager(this.template.cost(this.trainers[0]), +this.template._template.Cost.Population);
 	return true;
 };
 
-PETRA.TrainingPlan.prototype.getBestTrainers = function(gameState)
+TrainingPlan.prototype.getBestTrainers = function(gameState)
 {
 	if (this.metadata && this.metadata.trainer)
 	{
-		let trainer = gameState.getEntityById(this.metadata.trainer);
+		const trainer = gameState.getEntityById(this.metadata.trainer);
 		if (trainer)
 			return [trainer];
 	}
 
 	let allTrainers = gameState.findTrainers(this.type);
 	if (this.metadata && this.metadata.sea)
-		allTrainers = allTrainers.filter(API3.Filters.byMetadata(PlayerID, "sea", this.metadata.sea));
+		allTrainers = allTrainers.filter(filters.byMetadata(PlayerID, "sea", this.metadata.sea));
 	if (this.metadata && this.metadata.base)
-		allTrainers = allTrainers.filter(API3.Filters.byMetadata(PlayerID, "base", this.metadata.base));
+		allTrainers = allTrainers.filter(filters.byMetadata(PlayerID, "base", this.metadata.base));
 	if (!allTrainers || !allTrainers.hasEntities())
 		return undefined;
 
 	// Keep only trainers with smallest cost
 	let costMin = Math.min();
 	let trainers;
-	for (let ent of allTrainers.values())
+	for (const ent of allTrainers.values())
 	{
-		let cost = this.template.costSum(ent);
+		const cost = this.template.costSum(ent);
 		if (cost === costMin)
 			trainers.push(ent);
 		else if (cost < costMin)
@@ -63,12 +69,12 @@ PETRA.TrainingPlan.prototype.getBestTrainers = function(gameState)
 	return trainers;
 };
 
-PETRA.TrainingPlan.prototype.start = function(gameState)
+TrainingPlan.prototype.start = function(gameState)
 {
 	if (this.metadata && this.metadata.trainer)
 	{
-		let metadata = {};
-		for (let key in this.metadata)
+		const metadata = {};
+		for (const key in this.metadata)
 			if (key !== "trainer")
 				metadata[key] = this.metadata[key];
 		this.metadata = metadata;
@@ -79,9 +85,11 @@ PETRA.TrainingPlan.prototype.start = function(gameState)
 		let wantedIndex;
 		if (this.metadata && this.metadata.index)
 			wantedIndex = this.metadata.index;
-		const workerUnit = this.metadata && this.metadata.role && this.metadata.role === PETRA.Worker.ROLE_WORKER;
-		let supportUnit = this.template.hasClass("Support");
-		this.trainers.sort(function(a, b) {
+		const workerUnit = this.metadata && this.metadata.role &&
+			this.metadata.role === Worker.ROLE_WORKER;
+		const supportUnit = this.template.hasClass("Support");
+		this.trainers.sort(function(a, b)
+		{
 			// Prefer training buildings with short queues
 			let aa = a.trainingQueueTime();
 			let bb = b.trainingQueueTime();
@@ -99,8 +107,8 @@ PETRA.TrainingPlan.prototype.start = function(gameState)
 					bb += 50;
 			}
 			// Give also priority to buildings with the right accessibility
-			let aBase = a.getMetadata(PlayerID, "base");
-			let bBase = b.getMetadata(PlayerID, "base");
+			const aBase = a.getMetadata(PlayerID, "base");
+			const bBase = b.getMetadata(PlayerID, "base");
 			if (wantedIndex)
 			{
 				if (!aBase || gameState.ai.HQ.getBaseByID(aBase).accessIndex != wantedIndex)
@@ -111,8 +119,8 @@ PETRA.TrainingPlan.prototype.start = function(gameState)
 			// Then, if workers, small preference for bases with less workers
 			if (workerUnit && aBase && bBase && aBase != bBase)
 			{
-				let apop = gameState.ai.HQ.getBaseByID(aBase).workers.length;
-				let bpop = gameState.ai.HQ.getBaseByID(bBase).workers.length;
+				const apop = gameState.ai.HQ.getBaseByID(aBase).workers.length;
+				const bpop = gameState.ai.HQ.getBaseByID(bBase).workers.length;
 				if (apop > bpop)
 					aa++;
 				else if (bpop > apop)
@@ -129,12 +137,12 @@ PETRA.TrainingPlan.prototype.start = function(gameState)
 	this.onStart(gameState);
 };
 
-PETRA.TrainingPlan.prototype.addItem = function(amount = 1)
+TrainingPlan.prototype.addItem = function(amount = 1)
 {
 	this.number += amount;
 };
 
-PETRA.TrainingPlan.prototype.Serialize = function()
+TrainingPlan.prototype.Serialize = function()
 {
 	return {
 		"category": this.category,
@@ -147,11 +155,11 @@ PETRA.TrainingPlan.prototype.Serialize = function()
 	};
 };
 
-PETRA.TrainingPlan.prototype.Deserialize = function(gameState, data)
+TrainingPlan.prototype.Deserialize = function(gameState, data)
 {
-	for (let key in data)
+	for (const key in data)
 		this[key] = data[key];
 
-	this.cost = new API3.Resources();
+	this.cost = new ResourcesManager();
 	this.cost.Deserialize(data.cost);
 };

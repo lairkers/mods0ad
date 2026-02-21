@@ -53,7 +53,7 @@ zip: $(MOD_ALL_ZIPPED)
 
 # Installation - TODO: Check if mod.json should be deleted here
 $(MOD_INSTALL_DIR)/%: $(ZIP_DIR)/$$(notdir $$@)
-	$(MKDIR) $(@D) && $(CP) $< $@
+	$(RM) $(dir $@)/mod.json && $(MKDIR) $(@D) && $(CP) $< $@
 
 install: $(MOD_ALL_INSTALLED)
 
