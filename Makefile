@@ -34,7 +34,7 @@ UPDATER_WIN  := $(TOOLS_ROOT)/updater.bat
 UPDATER_UNIX := $(TOOLS_ROOT)/updater.sh
 
 RELEASE_SERVER_HTTP := https://ihaveastream.mywire.org
-RELEASE_SERVER_DIR  := public/uploads/0ad/mods
+RELEASE_SERVER_DIR  := 0ad/mods
 
 # TODO: how to autostart with MODs / a certain map if MOD is map?
 # Flags
