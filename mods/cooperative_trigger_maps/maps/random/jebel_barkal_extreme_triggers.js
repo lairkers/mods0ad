@@ -108,7 +108,7 @@ var jebelBarkal_cityPatrolGroup_balancing = {
  * Frequently the buildings spawn different units that attack the players groupwise.
  * Leave more time between the attacks in later stages of the game since the attackers become much stronger over time.
  */
-var jebelBarkal_attackInterval = (time, difficulty) => randFloat(5, 7) + time / difficulty / 10;            /* Changed here for quicker attacks */
+var jebelBarkal_attackInterval = (time, difficulty) => randFloat(6.5, 7.5) + time / difficulty / 10;            /* Changed here for quicker attacks */
 
 /**
  * Prevent city patrols chasing the starting units in nomad mode.

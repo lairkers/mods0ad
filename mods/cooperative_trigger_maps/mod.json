@@ -1,0 +1,7 @@
+{
+	"name": "cooperative_trigger_maps",
+	"version": "1.0.0",
+	"label": "Trigger maps which can be used for cooperative maps",
+	"description": "Based initially on a modded Jebel Barkal map. Also fixes network lag for Petra AI after not having any units any more.",
+	"dependencies": ["0ad=0.28.0"]
+}
