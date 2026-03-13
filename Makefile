@@ -23,6 +23,7 @@ MOD_ZIPPED         := $(ZIP_DIR)/$(MOD_NAME).zip
 MOD_ALL_ZIPPED     := $(addsuffix .zip,$(addprefix $(ZIP_DIR)/,$(notdir $(MOD_ALL))))
 MOD_INSTALLED      := $(MOD_INSTALL_DIR)/$(MOD_NAME)/$(MOD_NAME).zip
 MOD_ALL_INSTALLED  := $(addprefix $(MOD_INSTALL_DIR)/,$(join $(addsuffix /,$(MOD_ALL_NAMES)),$(addsuffix .zip,$(MOD_ALL_NAMES))))
+MOD_MANIFEST       := $(ZIP_DIR)/mods.txt
 
 TEST_ROOT := _log
 TEST_DIR  := $(TEST_ROOT)/$(MOD_NAME)
@@ -36,7 +37,6 @@ UPDATER_UNIX := $(TOOLS_ROOT)/updater.sh
 RELEASE_SERVER_HTTP := https://ihaveastream.mywire.org
 RELEASE_SERVER_DIR  := 0ad/mods
 
-# TODO: how to autostart with MODs / a certain map if MOD is map?
 # Flags
 0AD_FLAGS   := -autostart=random/$(MAP_NAME) -autostart-size=256 -autostart-disable-replay
 0AD_VICTORY := -autostart-player=2 -autostart-team=1:1 -autostart-team=2:1
@@ -49,7 +49,11 @@ $(ZIP_DIR):
 $(ZIP_DIR)/%.zip: $(shell find $(MOD_ROOT)/$(%) -type f) | $(ZIP_DIR)
 	$(ZIP) a -r -tzip $@ ./$(MOD_ROOT)/$(notdir $(@:.zip=))/*
 
-zip: $(MOD_ALL_ZIPPED)
+$(MOD_MANIFEST): $(MOD_ALL_ZIPPED) | $(ZIP_DIR)
+	printf '%s\n' $(notdir $(MOD_ALL_ZIPPED)) > $@
+
+
+zip: $(MOD_ALL_ZIPPED) $(MOD_MANIFEST)
 
 # Installation - TODO: Check if mod.json should be deleted here
 $(MOD_INSTALL_DIR)/%: $(ZIP_DIR)/$$(notdir $$@)
@@ -80,10 +84,10 @@ play: $(MOD_ALL_INSTALLED)
 
 
 # Uploads *all* mods to FTP server
-release: $(MOD_ALL_ZIPPED)
+release: $(MOD_ALL_ZIPPED) $(MOD_MANIFEST)
 	ruby $(RELEASE_RB) --server $(RELEASE_SERVER_HTTP) \
 		--token $(RELEASE_SERVER_TOKEN) --path $(RELEASE_SERVER_DIR) \
-		$(MOD_ALL_ZIPPED) $(UPDATER_WIN) $(UPDATER_UNIX)
+		$(MOD_ALL_ZIPPED) $(UPDATER_WIN) $(UPDATER_UNIX) $(MOD_MANIFEST)
 
 # Download from FTP server
 update download:

@@ -12,7 +12,8 @@ rem ############################################################################
 rem  Server address and file names
 rem #############################################################################
 set SERVER_HTTP=https://ihaveastream.mywire.org/public/uploads/0ad/mods/
-set FILES=jebel_barkal_extreme.zip petra_lag_fix.zip
+set MANIFEST_FILE=mods.txt
+set MANIFEST_PATH=%TEMP%\mods0ad_manifest.txt
 
 
 rem #############################################################################
@@ -24,13 +25,23 @@ if "%INSTALLATION_PATH%"=="" (
 )
 
 rem #############################################################################
-rem  Download files to installation path
+rem  Download manifest and files to installation path
 rem #############################################################################
-for %%f in (%FILES%) do (
-    del /q "%INSTALLATION_PATH%\%%~nf\mod.json"
-    mkdir "%INSTALLATION_PATH%\%%~nf"
-    call curl --create-dirs -o "%INSTALLATION_PATH%\%%~nf\%%f" "%SERVER_HTTP%%%f"
+curl -fsSL -o "%MANIFEST_PATH%" "%SERVER_HTTP%%MANIFEST_FILE%"
+if errorlevel 1 (
+    echo Could not download manifest: %SERVER_HTTP%%MANIFEST_FILE%
+    exit /b 1
 )
+
+for /f "usebackq eol=# tokens=* delims=" %%f in ("%MANIFEST_PATH%") do (
+    if not "%%f"=="" (
+        rmdir /s /q "%INSTALLATION_PATH%\%%~nf"
+        mkdir "%INSTALLATION_PATH%\%%~nf"
+        call curl --create-dirs -o "%INSTALLATION_PATH%\%%~nf\%%f" "%SERVER_HTTP%%%f"
+    )
+)
+
+del /q "%MANIFEST_PATH%"
 
 echo Done. Enjoy.
 

@@ -13,7 +13,7 @@ INSTALLATION_PATH=~/snap/0ad/current/.local/share/0ad/mods/
 # Server address and file names
 ##############################################################################
 SERVER_HTTP=https://ihaveastream.mywire.org/public/uploads/0ad/mods/
-FILES=(jebel_barkal_extreme.zip petra_lag_fix.zip)
+MANIFEST_FILE=mods.txt
 
 
 ##############################################################################
@@ -25,13 +25,28 @@ if [ -z ${INSTALLATION_PATH+x} ]; then
 fi
 
 ##############################################################################
-# Download files to installation path
+# Download manifest and files to installation path
 ##############################################################################
-for FILE in "${FILES[@]}"
+MANIFEST_PATH=$(mktemp)
+trap 'rm -f "$MANIFEST_PATH"' EXIT
+
+if ! wget -q -O "$MANIFEST_PATH" "$SERVER_HTTP/$MANIFEST_FILE"; then
+    echo "Could not download manifest: $SERVER_HTTP/$MANIFEST_FILE"
+    exit 1
+fi
+
+while IFS= read -r FILE || [ -n "$FILE" ]
 do
-    rm -rf $INSTALLATION_PATH/$(basename $FILE .zip)
-    mkdir -p $INSTALLATION_PATH/$(basename $FILE .zip)
-    wget -P $INSTALLATION_PATH -O $INSTALLATION_PATH/$(basename $FILE .zip)/$FILE $SERVER_HTTP/$FILE
-done
+    case "$FILE" in
+        ""|\#*)
+            continue
+            ;;
+    esac
+
+    MOD_NAME=$(basename "$FILE" .zip)
+    rm -rf "$INSTALLATION_PATH/$MOD_NAME"
+    mkdir -p "$INSTALLATION_PATH/$MOD_NAME"
+    wget -P "$INSTALLATION_PATH" -O "$INSTALLATION_PATH/$MOD_NAME/$FILE" "$SERVER_HTTP/$FILE"
+done < "$MANIFEST_PATH"
 
 echo "Done. Enjoy."
