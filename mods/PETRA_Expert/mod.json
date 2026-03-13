@@ -1,0 +1,9 @@
+{
+	"name": "PETRA_Expert",
+	"version": "0.7.7",
+	"label": "PETRA Expert",
+	"url": "https://wildfiregames.com/forum/topic/116358-bot-petra_expertmore-active-bot-compatible-with-a27/",
+	"description": "Adds a more advanced bot (based on PETRA) to the game.",
+	"dependencies": ["0ad=0.28.0"],
+	"type": ["New Bot"]
+}

@@ -1,0 +1,5 @@
+
+code - Kostiantyn Zinenko (mod_3d)
+License - GNU GENERAL PUBLIC LICENSE Version 2
+
+

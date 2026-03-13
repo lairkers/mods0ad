@@ -1,0 +1,8 @@
+{
+  "name": "Petra_Expert Bot",
+  "description": "Petra_Expert is the more advanced 0 A.D. AI bot..\n\nThe AI's resource gathering rate and trade gain depend on the difficulty level (Sandbox −58%, Very Easy −44%, Easy −25%, Medium ±0%, Hard +25%, Very Hard +56%). The easiest levels also have a slower research, training, and building rate. In addition, the Sandbox level does not expand nor attack.",
+  "moduleName" : "PETRA_EXPERT",
+  "constructor": "PetraExpertBot",
+  "filename": "_petraexpertbot.js",
+  "useShared": true
+}
