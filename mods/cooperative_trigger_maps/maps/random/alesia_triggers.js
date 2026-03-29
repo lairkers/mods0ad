@@ -70,6 +70,17 @@ var jebelBarkal_templates = deepfreeze(Object.keys(jebelBarkal_templateClasses).
     return templates;
 }, {}));
 
+var sanitizeTemplateComposition = templateComposition =>
+    templateComposition.filter(templateBalance =>
+        templateBalance &&
+        Array.isArray(templateBalance.templates) &&
+        templateBalance.templates.length &&
+        (
+            templateBalance.frequency > 0 ||
+            templateBalance.count > 0 ||
+            templateBalance.unique_entities
+        ));
+
 /**
  * These are the formations patroling and attacking units can use.
 */
@@ -510,10 +521,12 @@ Trigger.prototype.JebelBarkal_rebuildCity_PlaceAndConstruct = function(template,
     /* Step 1: Spawn group of units */
     let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
     let templateCounts = TriggerHelper.BalancedTemplateComposition(
+        sanitizeTemplateComposition(
         [{
             "templates": jebelBarkal_templates.citizenSoldier_infantry,
             "frequency": 1
         }],
+        ),
         5);
     let groupEntities = this.JebelBarkal_SpawnTemplates(spawnEnt, templateCounts);
     this.JebelBarkal_PrepareEntitiesForRandomAttack(groupEntities);
@@ -756,9 +769,17 @@ Trigger.prototype.JebelBarkal_SpawnCityPatrolGroups_raw = function(time, groupCo
     for (let i = 0; i < groupCount; ++i)
     {
         let spawnEnt = pickRandom(this.jebelBarkal_patrolGroupSpawnPoints);
+        let unitComposition = sanitizeTemplateComposition(
+            jebelBarkal_cityPatrolGroup_balancing.unitComposition(time, this.jebelBarkal_heroes));
+
+        if (!unitComposition.length)
+        {
+            this.debugLog("Skipping city patrol spawn because no valid templates were found.");
+            continue;
+        }
 
         let templateCounts = TriggerHelper.BalancedTemplateComposition(
-            jebelBarkal_cityPatrolGroup_balancing.unitComposition(time, this.jebelBarkal_heroes),
+            unitComposition,
             jebelBarkal_cityPatrolGroup_balancing.unitCount(time));
 
         this.debugLog(uneval(templateCounts));
@@ -856,7 +877,16 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
             if (unitCount <= 0)
                 continue;
 
-            let templateCounts = TriggerHelper.BalancedTemplateComposition(spawnPointBalancing.unitComposition(time, this.jebelBarkal_heroes), unitCount);
+            let unitComposition = sanitizeTemplateComposition(
+                spawnPointBalancing.unitComposition(time, this.jebelBarkal_heroes));
+
+            if (!unitComposition.length)
+            {
+                this.debugLog("Skipping attacker spawn at " + spawnEnt + " because no valid templates were found.");
+                continue;
+            }
+
+            let templateCounts = TriggerHelper.BalancedTemplateComposition(unitComposition, unitCount);
 
             totalSpawnCount += unitCount;
 
@@ -904,12 +934,6 @@ Trigger.prototype.JebelBarkal_SpawnAttackerGroups = function()
             this.JebelBarkal_SendEntitiesToRandomAttack(playerEntities, patrolPoints, groupEntities, false);
         }
     }
-
-    if (totalSpawnCount)
-        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-            "message": markForTranslation("Napata is attacking!"),
-            "translateMessage": true
-        });
 };
 
 Trigger.prototype.JebelBarkal_PrepareEntitiesForRandomAttack = function(groupEntities)
