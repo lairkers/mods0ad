@@ -63,10 +63,10 @@ install: $(MOD_ALL_INSTALLED)
 
 
 # Testing the map generation
-$(TEST_ROOT):
+$(TEST_ROOT) $(TEST_DIR):
 	$(MKDIR) $@
 
-$(TEST_LOG): $(MOD_ALL_INSTALLED)
+$(TEST_LOG): $(MOD_ALL_INSTALLED) | $(TEST_ROOT) $(TEST_DIR)
 	$(0AD) $(0AD_FLAGS) $(0AD_VICTORY) -autostart-nonvisual -quickstart || true
 	$(CP) $(0AD_LOG) $@
 

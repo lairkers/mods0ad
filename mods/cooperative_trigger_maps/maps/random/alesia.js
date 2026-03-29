@@ -24,9 +24,9 @@ export function* generateMap(mapSettings)
 	const tDistrictDebugB = "savanna_dirt_rocks_a";
 	const tDistrictDebugCore = "savanna_cliff_a";
 
-	const oAcacia = "gaia/tree/oak";
-	const oPalmPath = "gaia/tree/poplar";
-	const oPalms = [
+	const oWildTree = "gaia/tree/oak";
+	const oRoadTree = "gaia/tree/poplar";
+	const oTreesFertileLand = [
 		"gaia/tree/oak",
 		"gaia/tree/oak_new",
 		"gaia/tree/euro_beech",
@@ -35,14 +35,14 @@ export function* generateMap(mapSettings)
 		"gaia/tree/pine"
 	];
 	const oBerryBushGrapes = "gaia/fruit/grapes";
-	const oBerryBushDesert = "gaia/fruit/berry_05";
-	const oStoneLargeDesert = "gaia/rock/desert_large";
-	const oStoneSmallDesert = "gaia/rock/desert_small";
-	const oMetalLargeDesert = "gaia/ore/desert_large";
-	const oMetalSmallDesert = "gaia/ore/desert_small";
-	const oStoneLargeFertileLand = "gaia/rock/desert_large";
-	const oStoneSmallFertileLand = "gaia/rock/greece_small";
-	const oMetalLargeFertileLand = "gaia/ore/desert_large";
+	const oBerryBushWild = "gaia/fruit/berry_01";
+	const oStoneLargeWild = "gaia/rock/temperate_large";
+	const oStoneSmallWild = "gaia/rock/temperate_small";
+	const oMetalLargeWild = "gaia/ore/temperate_large";
+	const oMetalSmallWild = "gaia/ore/temperate_small";
+	const oStoneLargeFertileLand = "gaia/rock/temperate_large";
+	const oStoneSmallFertileLand = "gaia/rock/temperate_small";
+	const oMetalLargeFertileLand = "gaia/ore/temperate_large";
 	const oMetalSmallFertileLand = "gaia/ore/temperate_small";
 	const oWoodTreasure = "gaia/treasure/wood";
 	const oStoneTreasure = "gaia/treasure/stone";
@@ -58,7 +58,6 @@ export function* generateMap(mapSettings)
 	const oFortress = "structures/gaul/fortress";
 	const oTower = mapSettings.Size >= 256 && getDifficulty() >= 3 ? "structures/gaul/defense_tower" : "structures/gaul/sentry_tower";
 	const oHouse = "structures/gaul/house";
-	const oNobaCamp = "structures/gaul/range";
 	const oCivicCenter = "structures/gaul/civil_centre";
 	const oWonder = "structures/gaul/wonder";
 	const oBarracks = "structures/gaul/barracks";
@@ -85,10 +84,7 @@ export function* generateMap(mapSettings)
 	const oTriggerPointCityPath = "trigger/trigger_point_A";
 	const oTriggerPointAttackerPatrol = "trigger/trigger_point_B";
 
-	const aPalmPath = actorTemplate("flora/trees/palm_cretan_date_tall");
 	const aRock = actorTemplate("geology/stone_savanna_med");
-	const aHandcart = actorTemplate("props/special/eyecandy/handcart_1");
-	const aPlotFence = actorTemplate("props/special/common/plot_fence");
 	const aBushesFertileLand = [
 		...new Array(3).fill("props/flora/shrub_spikes"),
 		...new Array(3).fill("props/flora/ferns"),
@@ -120,7 +116,7 @@ export function* generateMap(mapSettings)
 
 	const pForestPalms = [
 		tForestFloorFertile,
-		...oPalms.map(tree => tForestFloorFertile + TERRAIN_SEPARATOR + tree),
+		...oTreesFertileLand.map(tree => tForestFloorFertile + TERRAIN_SEPARATOR + tree),
 		tForestFloorFertile];
 
 	const heightScale = num => num * mapSettings.Size / 320;
@@ -714,16 +710,16 @@ export function* generateMap(mapSettings)
 				"maxGroupCount": 3
 			},
 			"Berries": {
-				"template": isDesert ? oBerryBushDesert : oBerryBushGrapes
+				"template": isDesert ? oBerryBushWild : oBerryBushGrapes
 			},
 			"Mines": {
 				"types": [
-					{ "template": isDesert ? oMetalLargeDesert : oMetalLargeFertileLand },
-					{ "template": isDesert ? oStoneLargeDesert : oStoneLargeFertileLand }
+					{ "template": isDesert ? oMetalLargeWild : oMetalLargeFertileLand },
+					{ "template": isDesert ? oStoneLargeWild : oStoneLargeFertileLand }
 				]
 			},
 			"Trees": {
-				"template": isDesert ? oAcacia : pickRandom(oPalms),
+				"template": isDesert ? oWildTree : pickRandom(oTreesFertileLand),
 				"count": isDesert ? scaleByMapSize(10, 20) : scaleByMapSize(30, 60)
 			},
 			"Treasures": {
@@ -750,13 +746,13 @@ export function* generateMap(mapSettings)
 		
 		let breakfast = 
 			[
-				[2, 3],                                                                     /* Very easy */
-				[1, 1, 1, 1, 1, 2, 2, 2, 3, 3],                                             /* Easy */
-				[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3],               /* Medium */
-				[1, 2],                                                                     /* Hard */
-				[0, 1, 1, 1, 1, 1, 2, 2],                                                   /* Very hard */
+				randFloat(3, 6),              /* Very easy */
+				randFloat(2, 5),              /* Easy */
+				randFloat(1, 4),              /* Medium */
+				randFloat(1, 3),              /* Hard */
+				randFloat(1, 2),              /* Very hard */
 			];
-		Alesia_placePlayerBaseStartingAnimal({                                                     /* Place additional breakfast (early game) */
+		Alesia_placePlayerBaseStartingAnimal({             /* Place additional breakfast (early game) */
 				"basePosition": playerPosition[i],
 				"BaseResourceClass": clBaseResource,
 				"baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),
@@ -777,7 +773,7 @@ export function* generateMap(mapSettings)
 	const gridCenter = mapCenter;
 	const wallGridStartAngle = -Math.PI;
 	const gridMaxAngle = 1.999 * Math.PI;
-	const gridRadius = y => scaleByMapSize(30, 60) * y;
+	const gridRadius = y => scaleByMapSize(30, 50) * y;
 
 	const gridPointsX = 9;
 	const gridPointsY = Math.floor(scaleByMapSize(2, 3.5));
@@ -976,9 +972,6 @@ export function* generateMap(mapSettings)
 			],
 			siegeRingConstraint);
 
-		g_Map.placeEntityPassable(aHandcart, 0, campPos, campAngle);
-		g_Map.placeEntityPassable(aPlotFence, 0, new Vector2D(0, 3).rotate(campAngle).add(campPos), campAngle);
-		g_Map.placeEntityPassable(aPlotFence, 0, new Vector2D(0, -3).rotate(campAngle).add(campPos), campAngle + Math.PI);
 		if (i % 2 == 0)
 			g_Map.placeEntityPassable(aRock, 0, new Vector2D(2, 0).rotate(campAngle).add(campPos), randomAngle());
 	}
@@ -1079,7 +1072,7 @@ export function* generateMap(mapSettings)
 
 		g_Map.log("Placing wall palms");
 		createObjectGroupsByAreas(
-			new SimpleGroup([new SimpleObject(oPalmPath, 1, 1, 0, 0)], true, clForest),
+			new SimpleGroup([new SimpleObject(oRoadTree, 1, 1, 0, 0)], true, clForest),
 			0,
 			avoidClasses(clForest, 2),
 			scaleByMapSize(40, 250),
@@ -1199,12 +1192,12 @@ export function* generateMap(mapSettings)
 
 	const mineObjectsPerBiome = [
 		{
-			"desert": mineObjects(oMetalSmallDesert, oMetalLargeDesert),
+			"desert": mineObjects(oMetalSmallWild, oMetalLargeWild),
 			"fertileLand": mineObjects(oMetalSmallFertileLand, oMetalLargeFertileLand),
 			"tileClass": clMetal
 		},
 		{
-			"desert": mineObjects(oStoneSmallDesert, oStoneLargeDesert),
+			"desert": mineObjects(oStoneSmallWild, oStoneLargeWild),
 			"fertileLand": mineObjects(oStoneSmallFertileLand, oStoneLargeFertileLand),
 			"tileClass": clRock
 		}
@@ -1335,14 +1328,14 @@ export function* generateMap(mapSettings)
 	yield 85;
 
 	createStragglerTrees(
-		oPalms,
+		oTreesFertileLand,
 		[stayFertileLand, avoidCollisions],
 		clForest,
 		scaleByMapSize(50, 400),
 		200);
 
 	createStragglerTrees(
-		[oAcacia],
+		[oWildTree],
 		[stayDesert, avoidCollisions],
 		clForest,
 		scaleByMapSize(50, 400),
