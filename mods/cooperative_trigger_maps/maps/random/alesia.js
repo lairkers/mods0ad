@@ -8,8 +8,6 @@ Engine.LoadLibrary("heightmap");
 
 export function* generateMap(mapSettings)
 {
-	TILE_CENTERED_HEIGHT_MAP = true;
-
 	const tSand = "steppe_grass_green_a";
 	const tRoadDesert = "savanna_tile_a";
 	const tRoadFertileLand = "savanna_tile_a";
@@ -20,9 +18,6 @@ export function* generateMap(mapSettings)
 	const tGrassTransition2 = "steppe_grass_dirt_66";
 	const tPath = "road2";
 	const tPathWild = "road_med";
-	const tDistrictDebugA = "savanna_tile_a_red";
-	const tDistrictDebugB = "savanna_dirt_rocks_a";
-	const tDistrictDebugCore = "savanna_cliff_a";
 
 	const oWildTree = "gaia/tree/oak";
 	const oRoadTree = "gaia/tree/poplar";
@@ -35,7 +30,6 @@ export function* generateMap(mapSettings)
 		"gaia/tree/pine"
 	];
 	const oBerryBushGrapes = "gaia/fruit/grapes";
-	const oBerryBushWild = "gaia/fruit/berry_01";
 	const oStoneLargeWild = "gaia/rock/temperate_large";
 	const oStoneSmallWild = "gaia/rock/temperate_small";
 	const oMetalLargeWild = "gaia/ore/temperate_large";
@@ -44,14 +38,11 @@ export function* generateMap(mapSettings)
 	const oStoneSmallFertileLand = "gaia/rock/temperate_small";
 	const oMetalLargeFertileLand = "gaia/ore/temperate_large";
 	const oMetalSmallFertileLand = "gaia/ore/temperate_small";
-	const oWoodTreasure = "gaia/treasure/wood";
-	const oStoneTreasure = "gaia/treasure/stone";
-	const oMetalTreasure = "gaia/treasure/metal";
 	const oDeer = "gaia/fauna_deer";
 	const oGoat = "gaia/fauna_goat";
 	const oBoar = "gaia/fauna_boar";
 	const oPig = "gaia/fauna_pig";
-	const oRabbit = "gaia/fauna_rabbit";
+	const oChicken = "gaia/fauna_chicken";
 	const oWolf = "gaia/fauna_wolf";
 	const oFish = "gaia/fish/generic";
 	const oHawk = "birds/buzzard";
@@ -158,18 +149,16 @@ export function* generateMap(mapSettings)
 	const clCivicCenter = g_Map.createTileClass();
 	const clBarracks = g_Map.createTileClass();
 
-	const riverAngle = randFloat(-0.1, 0.1) * Math.PI;
-	const northRiverAngle = randFloat(-0.1, 0.1) * Math.PI;
+	const riverAngle = randFloat(-0.2, 0.2) * Math.PI;
+	const northRiverAngle = randFloat(-0.2, 0.2) * Math.PI;
 
 	const pathWidth = 2;
 	const pathWidthCenter = 4;
 	const pathWidthSecondary = 3;
-	const outerSiegePlayerRadius = fractionToTiles(0.41);
-	const outerSiegeGapAngle = 0.22 * Math.PI;
-	const outerSiegeArcAngle = 0.82 * Math.PI;
-	const debugShowCityDistricts = false;
-	const debugPaintCityGridOnly = false;
-	const placeCitySetpieces = false;
+	const outerSiegePlayerRadius = fractionToTiles(0.44);
+	const outerSiegePlayerRadiusInner = fractionToTiles(0.4);
+	const playerTeamArcPerMember = Math.PI / 9;
+	const playerLandProbeDistance = 10;
 	const stayCity = new StaticConstraint(stayClasses(clCity, 0));
 
 	const placeCityWall = mapSize < 192 || getDifficulty() < 2 ? false : getDifficulty() < 3 ? "city_palisade" : "city_wall";
@@ -268,6 +257,28 @@ export function* generateMap(mapSettings)
 	const heightOffsetRoad = heightScale(-1.5);
 	const heightOffsetWalls = heightScale(2.5);
 
+	function isDryPlayerPosition(position)
+	{
+		for (let probe of [
+			new Vector2D(0, 0),
+			new Vector2D(playerLandProbeDistance, 0),
+			new Vector2D(-playerLandProbeDistance, 0),
+			new Vector2D(0, playerLandProbeDistance),
+			new Vector2D(0, -playerLandProbeDistance),
+			new Vector2D(playerLandProbeDistance, playerLandProbeDistance),
+			new Vector2D(playerLandProbeDistance, -playerLandProbeDistance),
+			new Vector2D(-playerLandProbeDistance, playerLandProbeDistance),
+			new Vector2D(-playerLandProbeDistance, -playerLandProbeDistance)
+		])
+		{
+			let probePosition = position.clone().add(probe).round();
+			if (g_Map.getHeight(probePosition) <= heightWaterLevel)
+				return false;
+		}
+
+		return true;
+	}
+
 	g_Map.log("Flattening land");
 	createArea(
 		new MapBoundsPlacer(),
@@ -360,70 +371,59 @@ export function* generateMap(mapSettings)
 
 	g_Map.log("Computing player locations");
 	let playerIDs = sortAllPlayers();
-	let teamIDs = playerIDs.map(getPlayerTeam);
-	let teamSizes = {};
-	for (let n of teamIDs) {
-		teamSizes[n] = teamSizes[n] ? teamSizes[n] + 1 : 1;
-	}
-	let biggestTeamID = 0;
-	let biggestTeamSize = 0;
-	for (let teamID of Object.keys(teamSizes)) {
-		if (biggestTeamSize < teamSizes[teamID])
-		{
-			biggestTeamID = teamID;
-			biggestTeamSize = teamSizes[teamID];
-		}
-	}
-	let biggestTeamPlayerIDs = [];
-	for (let i = 0; i < playerIDs.length - 1; i = i + 1) {
-		if (teamIDs[i] == biggestTeamID) {
-			biggestTeamPlayerIDs = biggestTeamPlayerIDs.concat([playerIDs[i]]);
-		}
-	}
-	let centerPlayerID = 0;
-	let centerPlayerID_index = 0;
-	let numOfTeams = Array.from(new Set(playerIDs.map(getPlayerTeam))).length;
-	let mapAngle = riverAngle - 0.5 * Math.PI;
 	let playerPosition = [];
-	let centerPlayerPosition = [];
-
-	/* Alesia layout: players occupy the outer siege ring instead of the old river-facing arc. */
-	let doCenterPlayer = false;
-	if (doCenterPlayer)
+	let teamOrder = [];
+	let teamPlayers = {};
+	for (let playerID of playerIDs)
 	{
-		centerPlayerID = pickRandom(biggestTeamPlayerIDs);
-		centerPlayerID_index = playerIDs.indexOf(centerPlayerID);
-		playerIDs.splice(centerPlayerID_index, 1)
-		centerPlayerPosition = playerPlacementArc([centerPlayerID], mapCenter, fractionToTiles(0.28), mapAngle, mapAngle)[0];
+		let teamID = getPlayerTeam(playerID);
+		if (!teamPlayers[teamID])
+		{
+			teamPlayers[teamID] = [];
+			teamOrder.push(teamID);
+		}
+		teamPlayers[teamID].push(playerID);
 	}
 
-	/* All other players */
-	if (numOfTeams == 1)
+	let teamCount = teamOrder.length;
+	let teamSlotAngle = 2 * Math.PI / teamCount;
+	for (let attempt = 0; attempt < 200; ++attempt)
 	{
-		playerPosition = playerPlacementArcs(
-			playerIDs,
-			mapCenter,
-			outerSiegePlayerRadius,
-			mapAngle,
-			outerSiegeGapAngle,
-			outerSiegeArcAngle);
-	}
-	else
-	{
-		playerPosition = playerPlacementArcs(
-			playerIDs,
-			mapCenter,
-			outerSiegePlayerRadius,
-			mapAngle,
-			outerSiegeGapAngle,
-			outerSiegeArcAngle);
+		let playerRadius = randFloat(outerSiegePlayerRadiusInner, outerSiegePlayerRadius);
+		let globalRotation = randFloat(0, 2 * Math.PI);
+		let playerPositionByID = {};
+
+		for (let i = 0; i < teamOrder.length; ++i)
+		{
+			let teamID = teamOrder[i];
+			let teamPlayerIDs = teamPlayers[teamID];
+			let idealArcAngle = teamPlayerIDs.length * playerTeamArcPerMember;
+			let maxArcAngle = teamCount == 1 ? idealArcAngle : teamSlotAngle * 0.85;
+			let teamArcAngle = Math.min(idealArcAngle, maxArcAngle);
+			let slotCenterAngle = globalRotation + (i + 0.5) * teamSlotAngle;
+			let centerJitter = Math.max((teamSlotAngle - teamArcAngle) / 2, 0);
+			let teamCenterAngle = slotCenterAngle + randFloat(-centerJitter, centerJitter);
+			let teamPositions = playerPlacementArc(
+				teamPlayerIDs,
+				mapCenter,
+				playerRadius,
+				teamCenterAngle - teamArcAngle / 2,
+				teamCenterAngle + teamArcAngle / 2);
+
+			for (let j = 0; j < teamPlayerIDs.length; ++j)
+				playerPositionByID[teamPlayerIDs[j]] = teamPositions[j];
+		}
+
+		let candidatePlayerPositions = playerIDs.map(playerID => playerPositionByID[playerID]);
+		if (candidatePlayerPositions.every(position => isDryPlayerPosition(position)))
+		{
+			playerPosition = candidatePlayerPositions;
+			break;
+		}
 	}
 
-	if (doCenterPlayer)
-	{
-		playerIDs.splice(centerPlayerID_index, 0, centerPlayerID);
-		playerPosition.splice(centerPlayerID_index, 0, centerPlayerPosition);
-	}
+	if (!playerPosition.length)
+		error("Could not find dry player positions.");
 
 	if (!mapSettings.Nomad)
 	{
@@ -523,7 +523,7 @@ export function* generateMap(mapSettings)
 				new PathPlacer(
 					new Vector2D(x1, y).rotateAround(-riverAngle, mapCenter),
 					new Vector2D(x2, y).rotateAround(-riverAngle, mapCenter),
-					10,
+					14,
 					0,
 					1,
 					0,
@@ -612,7 +612,7 @@ export function* generateMap(mapSettings)
 				new PathPlacer(
 					new Vector2D(x1, y).rotateAround(-northRiverAngle, mapCenter),
 					new Vector2D(x2, y).rotateAround(-northRiverAngle, mapCenter),
-					10,
+					14,
 					0,
 					1,
 					0,
@@ -689,7 +689,6 @@ export function* generateMap(mapSettings)
 
 	for (let i = 0; i < numPlayers; ++i)
 	{
-		const isDesert = clDesert.has(playerPosition[i]);
 		placePlayerBase({
 			"playerID": playerIDs[i],
 			"playerPosition": playerPosition[i],
@@ -698,66 +697,49 @@ export function* generateMap(mapSettings)
 			"baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),
 			"Walls": mapSize <= 256 || getDifficulty() >= 3 ? "towers" : "walls",
 			"CityPatch": {
-				"outerTerrain": isDesert ? tRoadDesert : tRoadFertileLand,
-				"innerTerrain": isDesert ? tRoadDesert : tRoadFertileLand
+				"outerTerrain": tRoadFertileLand,
+				"innerTerrain": tRoadFertileLand
 			},
-			"Chicken": {
-				"template": oRabbit,
+			"StartingAnimal": {
+				"template": oChicken,
 				"distance": 15,
 				"minGroupDistance": 2,
 				"maxGroupDistance": 4,
-				"minGroupCount": 2,
-				"maxGroupCount": 3
+				"minGroupCount": 10,
+				"maxGroupCount": 15
 			},
 			"Berries": {
-				"template": isDesert ? oBerryBushWild : oBerryBushGrapes
+				"template": oBerryBushGrapes
 			},
 			"Mines": {
 				"types": [
-					{ "template": isDesert ? oMetalLargeWild : oMetalLargeFertileLand },
-					{ "template": isDesert ? oStoneLargeWild : oStoneLargeFertileLand }
+					{ "template": oMetalLargeFertileLand },
+					{ "template": oStoneLargeFertileLand }
 				]
 			},
 			"Trees": {
-				"template": isDesert ? oWildTree : pickRandom(oTreesFertileLand),
-				"count": isDesert ? scaleByMapSize(10, 20) : scaleByMapSize(30, 60)
-			},
-			"Treasures": {
-				"types":
-				[
-					{
-						"template": oWoodTreasure,
-						"count": isDesert ? 4 : 0
-					},
-					{
-						"template": oStoneTreasure,
-						"count": isDesert ? 1 : 0
-					},
-					{
-						"template": oMetalTreasure,
-						"count": isDesert ? 1 : 0
-					}
-				]
+				"template": pickRandom(oTreesFertileLand),
+				"count": scaleByMapSize(30, 60)
 			},
 			"Decoratives": {
-				"template": isDesert ? aRock : pickRandom(aBushesFertileLand)
+				"template": pickRandom(aBushesFertileLand)
 			}
 		});
 		
 		let breakfast = 
 			[
-				randFloat(3, 6),              /* Very easy */
-				randFloat(2, 5),              /* Easy */
-				randFloat(1, 4),              /* Medium */
-				randFloat(1, 3),              /* Hard */
-				randFloat(1, 2),              /* Very hard */
+				randFloat(10, 15),              /* Very easy */
+				randFloat(8, 12),              /* Easy */
+				randFloat(6, 10),              /* Medium */
+				randFloat(5, 8),              /* Hard */
+				randFloat(4, 6),              /* Very hard */
 			];
 		Alesia_placePlayerBaseStartingAnimal({             /* Place additional breakfast (early game) */
 				"basePosition": playerPosition[i],
 				"BaseResourceClass": clBaseResource,
 				"baseResourceConstraint": avoidClasses(clPlayer, 4, clWater, 4),
-				"template": oGoat,
-				"groupCount" : pickRandom(breakfast[getDifficulty() - 1]) * 8,
+				"template": oPig,
+				"groupCount" : pickRandom(breakfast[getDifficulty() - 1]),
 				"distance": 5,
 				"minGroupDistance": 3,
 				"maxGroupDistance": 6,
@@ -868,8 +850,8 @@ export function* generateMap(mapSettings)
 					cityGridPosition[y][x - 1]
 				], Infinity),
 				[
-					new TerrainPainter(debugShowCityDistricts ? ((x + y) % 2 ? tDistrictDebugA : tDistrictDebugB) : tRoadDesert),
-					!debugPaintCityGridOnly && new CityPainter(layoutCity, (-cityGridAngle[y][x - 1] - cityGridAngle[y][x]) / 2, 0),
+					new TerrainPainter(tRoadDesert),
+					new CityPainter(layoutCity, (-cityGridAngle[y][x - 1] - cityGridAngle[y][x]) / 2, 0),
 					new TileClassPainter(clCity)
 				].filter(Boolean),
 				new StaticConstraint(avoidClasses(clPath, 0)));
@@ -880,13 +862,12 @@ export function* generateMap(mapSettings)
 	createArea(
 		new DiskPlacer(centralPlazaRadius, gridCenter),
 		[
-			new TerrainPainter(debugShowCityDistricts ? tDistrictDebugCore : tRoadDesert),
+			new TerrainPainter(tRoadDesert),
 			new TileClassPainter(clCity)
 		].filter(Boolean),
 		new StaticConstraint());
 
-	if (!debugPaintCityGridOnly)
-		g_Map.placeEntityPassable(oWonder, 0, gridCenter, 0);
+	g_Map.placeEntityPassable(oWonder, 0, gridCenter, 0);
 
 	createArea(
 		new DiskPlacer(centralPlazaRadius, gridCenter),
@@ -1320,7 +1301,7 @@ export function* generateMap(mapSettings)
 			new SimpleGroup([new SimpleObject(oWolf, 1, 2, 2, 6)], true, clFood),
 			0,
 			[avoidCollisions, avoidClasses(clPlayer, 30)],
-			scaleByMapSize(2, 10),
+			scaleByMapSize(6, 20),
 			50,
 			[areaDesert]);
 	}
@@ -1365,9 +1346,9 @@ export function* generateMap(mapSettings)
 			g_Map.log("Placing siege engines around the wonder");
 			let wonderArtilleryPlaced = 0;
 			const wonderArtilleryRings = [
-				{ "radius": Math.max(8, centralPlazaRadius + 2), "count": 12 },
-				{ "radius": Math.max(10, centralPlazaRadius + 4), "count": 18 },
-				{ "radius": Math.max(12, centralPlazaRadius + 6), "count": 12 }
+				{ "radius": Math.max(8, centralPlazaRadius + 2), "count": 8 },
+				{ "radius": Math.max(10, centralPlazaRadius + 4), "count": 12 },
+				{ "radius": Math.max(12, centralPlazaRadius + 6), "count": 8 }
 			];
 
 			for (const ring of wonderArtilleryRings)

@@ -135,7 +135,7 @@ var alesia_cityPatrolGroup_balancing = {
  * Frequently the buildings spawn different units that attack the players groupwise.
  * Leave more time between the attacks in later stages of the game since the attackers become much stronger over time.
  */
-var alesia_attackInterval = (time, difficulty) => randFloat(6.5, 7.5) + time / difficulty / 10;            /* Changed here for quicker attacks */
+var alesia_attackInterval = (time, difficulty) => randFloat(5, 6) + time / difficulty / 15;            /* Changed here for quicker attacks */
 
 /**
  * Prevent city patrols chasing the starting units in nomad mode.
@@ -148,7 +148,7 @@ var alesia_firstCityPatrolTime = (difficulty, isNomad) =>
  */
 var alesia_firstAttackTime = (difficulty, isNomad) => 
     alesia_attackInterval(0, difficulty) +
-    2 * Math.max(0, 3 - difficulty) +
+    2 * Math.max(0, 3 - difficulty) + 2 + 
     (isNomad ?  9 - difficulty : 0);
 
 /**
@@ -161,7 +161,7 @@ var alesia_cityExpansionInterval = (difficulty) => randFloat(2, 4) + 10 - 2 * di
  */
 var alesia_firstCityExpansionTime = (difficulty) =>
     alesia_cityExpansionInterval(0, difficulty) +
-    15 * Math.max(1, 3 - difficulty);
+    10 * Math.max(1, 3 - difficulty);
 
 /**
  * Account for varying mapsizes and number of players when spawning attackers.
@@ -1034,25 +1034,28 @@ Trigger.prototype.Alesia_OwnershipChange_DetectWin = function(data)
 {
     if (this.alesia_won)
         return;
-    
-    // Game is won if all attack production entities are destroyed
-    if (0 == this.alesia_attackerGroupSpawnPoints.length)
-    {
-        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-            "message": "Vercingetorix wurde besiegt!"
-        });
-        TriggerHelper.SetPlayerWon(
-            1,
-            n => markForPluralTranslation(
-                "%(lastPlayer)s haben gewonnen (Vercingetorix wurde besiegt).",
-                "%(players)s und %(lastPlayer)s haben gewonnen (Vercingetorix wurde besiegt).",
-                n),
-            n => markForPluralTranslation(
-                "%(lastPlayer)s wurden besiegt.",
-                "%(players)s und %(lastPlayer)s wurden besiegt.",
-                n));
-        this.alesia_won = true;
-    }
+
+    if (data.to <= 0)
+        return;
+
+    let cmpIdentity = Engine.QueryInterface(data.entity, IID_Identity);
+    if (!cmpIdentity || !MatchesClassList(cmpIdentity.GetClassesList(), "Wonder"))
+        return;
+
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": "Das Wunder wurde eingenommen!"
+    });
+    TriggerHelper.SetPlayerWon(
+        data.to,
+        n => markForPluralTranslation(
+            "%(lastPlayer)s haben gewonnen (das Wunder wurde eingenommen).",
+            "%(players)s und %(lastPlayer)s haben gewonnen (das Wunder wurde eingenommen).",
+            n),
+        n => markForPluralTranslation(
+            "%(lastPlayer)s wurden besiegt.",
+            "%(players)s und %(lastPlayer)s wurden besiegt.",
+            n));
+    this.alesia_won = true;
 }
 
 Trigger.prototype.Alesia_OwnershipChange_RebuildCity = function(data)
