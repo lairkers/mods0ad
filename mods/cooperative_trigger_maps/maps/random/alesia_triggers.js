@@ -623,6 +623,7 @@ Trigger.prototype.Alesia_Init_TrackUnits = function()
         "Wall");
     this.alesia_escalatingDefense_started = false;
     this.alesia_escalatingDefense_lastNumDestroyedWalls = 0;
+    this.alesia_escalatingDefense_ramsSpawned = false;
     
     // Save that game is not yet won
     this.alesia_won = false;
@@ -892,6 +893,46 @@ Trigger.prototype.Alesia_SpawnAttackerGroups = function()
     
     if (this.alesia_escalatingDefense_started)                                                         // Escalating defense upgrade == flooding defense
     {
+        // Spawn rams once at the first counterattack wave after escalating defense started.
+        if (!this.alesia_escalatingDefense_ramsSpawned &&
+            this.alesia_attackerGroupSpawnPoints.length &&
+            alesia_templates.siege_ram.length)
+        {
+            let ramTemplate = pickRandom(alesia_templates.siege_ram);
+            let ramEntities = [];
+
+            for (let i = 0; i < 100; ++i)
+            {
+                let spawnEnt = pickRandom(this.alesia_attackerGroupSpawnPoints);
+                let spawnedRam = TriggerHelper.SpawnUnits(spawnEnt, ramTemplate, 1, alesia_playerID);
+                if (!spawnedRam.length)
+                    continue;
+
+                ramEntities = ramEntities.concat(spawnedRam);
+            }
+
+            this.alesia_attackerUnits = this.alesia_attackerUnits.concat(ramEntities);
+            let ramTargetClasses = "Structure";
+            let siegeBalancing = alesia_attackerGroup_balancing.find(
+                spawnPointBalancing => spawnPointBalancing.buildingClasses.includes("Arsenal"));
+            if (siegeBalancing && siegeBalancing.targetClasses)
+                ramTargetClasses = siegeBalancing.targetClasses();
+
+            let ramTargets = playerEntities.reduce((allTargets, playerEnts) =>
+                allTargets.concat(shuffleArray(TriggerHelper.MatchEntitiesByClass(playerEnts, ramTargetClasses)).slice(0, 10)), []);
+            if (ramTargets.length)
+                ProcessCommand(alesia_playerID, {
+                    "type": "attack",
+                    "entities": ramEntities,
+                    "target": pickRandom(ramTargets),
+                    "queued": false,
+                    "allowCapture": false
+                });
+            else
+                this.Alesia_SendEntitiesToRandomAttack(playerEntities, patrolPoints, ramEntities, false);
+            this.alesia_escalatingDefense_ramsSpawned = true;
+        }
+
         // Now also send all existing patroling groups towards players
         for (let groupEntities of this.alesia_patrolingUnits)
         {
@@ -1020,14 +1061,19 @@ Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data
         return;
     
     Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": "Jagd Martin, Johannes und Lars aus der Stadt!",
+        "message": "Stadtwache: Vercingetorix! Der Feind ist in die Stadt eingedrungen",
+        "translateMessage": false
+    });
+
+    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+        "message": "Vercingetorix: Bewaffnet jeden Mann und jede Frau!",
         "translateMessage": false
     });
     
     this.alesia_escalatingDefense_started = true;
     
     // Make an immediate spawning of a lot of city patrol groups. Will be later only filled up to lower numbers bc otherwise it is impossible
-    this.Alesia_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10)
+    this.Alesia_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10);
 }
 
 Trigger.prototype.Alesia_OwnershipChange_DetectWin = function(data)

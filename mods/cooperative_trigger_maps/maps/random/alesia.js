@@ -701,12 +701,12 @@ export function* generateMap(mapSettings)
 				"innerTerrain": tRoadFertileLand
 			},
 			"StartingAnimal": {
-				"template": oChicken,
-				"distance": 15,
+				"template": oGoat,
+				"distance": 10,
 				"minGroupDistance": 2,
 				"maxGroupDistance": 4,
-				"minGroupCount": 10,
-				"maxGroupCount": 15
+				"minGroupCount": 4,
+				"maxGroupCount": 8
 			},
 			"Berries": {
 				"template": oBerryBushGrapes
