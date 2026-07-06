@@ -563,7 +563,7 @@ Trigger.prototype.Alesia_Init = function()
     this.Alesia_SetDefenderStance();
     this.Alesia_StartRitualAnimations();
     this.Alesia_GarrisonBuildings();
-    this.Alesia_SpawnAttackerGroups();
+    this.Alesia_StartAttackTimer(alesia_firstAttackTime(this.GetDifficulty(), isNomad), true);
     this.DoAfterDelay(alesia_firstCityPatrolTime(this.GetDifficulty(), isNomad) * 60 * 1000, "Alesia_SpawnCityPatrolGroups", {});
     this.Alesia_StartCityExpansionTimer(alesia_firstCityExpansionTime(this.GetDifficulty()));
     
@@ -602,6 +602,7 @@ Trigger.prototype.Alesia_Init_TrackUnits = function()
 
     // Keep track of population limit for attackers
     this.alesia_attackerUnits = [];
+    this.alesia_attackTimerID = 0;
 
     // Array of entityIDs where patrol groups can spawn
     this.alesia_patrolGroupSpawnPoints = TriggerHelper.GetPlayerEntitiesByClass(
@@ -627,6 +628,7 @@ Trigger.prototype.Alesia_Init_TrackUnits = function()
     this.alesia_escalatingDefense_notificationsShown = false;
     this.alesia_escalatingDefense_lastNumDestroyedWalls = 0;
     this.alesia_escalatingDefense_ramsSpawned = false;
+    this.alesia_escalatingDefense_counterattackStarted = false;
     this.alesia_escalatingDefense_wallsCollapsed = false;
     
     // Save that game is not yet won
@@ -801,12 +803,22 @@ Trigger.prototype.Alesia_SpawnTemplates = function(spawnEnt, templateCounts)
 /**
  * Spawn a group of attackers at every remaining building.
  */
-Trigger.prototype.Alesia_SpawnAttackerGroups = function()
+Trigger.prototype.Alesia_SpawnAttackerGroups = function(data)
 {
+    if (data && data.attackTimerID && data.attackTimerID != this.alesia_attackTimerID)
+        return;
+
     if (!this.alesia_attackerGroupSpawnPoints)
         return;
 
     let time = TriggerHelper.GetMinutes();
+    if (data && data.skipAttack)
+    {
+        this.debugLog("Skipping first attacker wave.");
+        this.Alesia_StartAttackTimer(alesia_attackInterval(time, this.GetDifficulty()));
+        return;
+    }
+
     this.Alesia_StartAttackTimer(alesia_attackInterval(time, this.GetDifficulty()));
 
     this.debugLog("Attacker wave (at most " + (alesia_maxPopulation - this.alesia_attackerUnits.length) + " attackers)");
@@ -977,9 +989,10 @@ Trigger.prototype.Alesia_SendEntitiesToRandomAttack = function(playerEntities, p
     });
 }
 
-Trigger.prototype.Alesia_StartAttackTimer = function(delay)
+Trigger.prototype.Alesia_StartAttackTimer = function(delay, skipAttack)
 {
     let nextAttack = delay * 60 * 1000;
+    ++this.alesia_attackTimerID;
 
     Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).AddTimeNotification({
         "message": markForTranslation("Vercingetorix will attack in %(time)s!"),
@@ -987,7 +1000,10 @@ Trigger.prototype.Alesia_StartAttackTimer = function(delay)
         "translateMessage": true
     }, nextAttack);
 
-    this.DoAfterDelay(nextAttack, "Alesia_SpawnAttackerGroups", {});
+    this.DoAfterDelay(nextAttack, "Alesia_SpawnAttackerGroups", {
+        "attackTimerID": this.alesia_attackTimerID,
+        "skipAttack": !!skipAttack
+    });
 };
 
 Trigger.prototype.Alesia_CityExpansion = function()
@@ -1115,6 +1131,11 @@ Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data
 
     this.Alesia_CollapseInitialWalls();
     this.Alesia_StartEscalatingDefense(true);
+    if (!this.alesia_escalatingDefense_counterattackStarted)
+    {
+        this.alesia_escalatingDefense_counterattackStarted = true;
+        this.Alesia_SpawnAttackerGroups();
+    }
 }
 
 Trigger.prototype.Alesia_OwnershipChange_DetectWin = function(data)
