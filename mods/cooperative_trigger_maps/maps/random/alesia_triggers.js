@@ -156,6 +156,8 @@ var alesia_firstAttackTime = (difficulty, isNomad) =>
  */
 var alesia_cityExpansionInterval = (difficulty) => randFloat(2, 4) + 10 - 2 * difficulty;     /* Changed here for quicker expansion */
 
+var alesia_rebuildCityAfterDestruction = false;
+
 /**
  * Delay the city expansion depending on difficulty
  */
@@ -561,8 +563,8 @@ Trigger.prototype.Alesia_Init = function()
     this.Alesia_SetDefenderStance();
     this.Alesia_StartRitualAnimations();
     this.Alesia_GarrisonBuildings();
+    this.Alesia_SpawnAttackerGroups();
     this.DoAfterDelay(alesia_firstCityPatrolTime(this.GetDifficulty(), isNomad) * 60 * 1000, "Alesia_SpawnCityPatrolGroups", {});
-    this.Alesia_StartAttackTimer(alesia_firstAttackTime(this.GetDifficulty(), isNomad));
     this.Alesia_StartCityExpansionTimer(alesia_firstCityExpansionTime(this.GetDifficulty()));
     
     this.Alesia_rebuildCity_unfinishedBuildings = [];
@@ -622,8 +624,10 @@ Trigger.prototype.Alesia_Init_TrackUnits = function()
         alesia_playerID,
         "Wall");
     this.alesia_escalatingDefense_started = false;
+    this.alesia_escalatingDefense_notificationsShown = false;
     this.alesia_escalatingDefense_lastNumDestroyedWalls = 0;
     this.alesia_escalatingDefense_ramsSpawned = false;
+    this.alesia_escalatingDefense_wallsCollapsed = false;
     
     // Save that game is not yet won
     this.alesia_won = false;
@@ -911,6 +915,7 @@ Trigger.prototype.Alesia_SpawnAttackerGroups = function()
                 ramEntities = ramEntities.concat(spawnedRam);
             }
 
+            this.debugLog("Spawning " + ramEntities.length + " escalating defense rams.");
             this.alesia_attackerUnits = this.alesia_attackerUnits.concat(ramEntities);
             let ramTargetClasses = "Structure";
             let siegeBalancing = alesia_attackerGroup_balancing.find(
@@ -1033,11 +1038,57 @@ Trigger.prototype.Alesia_OwnershipChange_KeepTrackOfUnits = function(data)
     this.alesia_patrolingUnits = this.alesia_patrolingUnits.filter(entities => entities.length);
 }
 
-Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data)                                                    /* Escalating defense */
+Trigger.prototype.Alesia_StartEscalatingDefense = function(showNotifications)
 {
+    if (showNotifications && !this.alesia_escalatingDefense_notificationsShown)
+    {
+        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+            "message": "Stadtwache: Vercingetorix! Der Feind ist in die Stadt eingedrungen",
+            "translateMessage": false
+        });
+
+        Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
+            "message": "Vercingetorix: Bewaffnet jeden Mann und jede Frau!",
+            "translateMessage": false
+        });
+
+        this.alesia_escalatingDefense_notificationsShown = true;
+    }
+
     if (this.alesia_escalatingDefense_started)
         return;
-    
+
+    this.alesia_escalatingDefense_started = true;
+
+    // Make an immediate spawning of a lot of city patrol groups. Will be later only filled up to lower numbers bc otherwise it is impossible
+    if (this.alesia_patrolGroupSpawnPoints.length)
+        this.Alesia_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10);
+}
+
+Trigger.prototype.Alesia_CollapseInitialWalls = function()
+{
+    if (this.alesia_escalatingDefense_wallsCollapsed)
+        return;
+
+    this.alesia_escalatingDefense_wallsCollapsed = true;
+
+    let currentWalls = TriggerHelper.GetPlayerEntitiesByClass(alesia_playerID, "Wall");
+    let collapsedWalls = 0;
+    for (let wall of this.alesia_escalatingDefense_walls)
+    {
+        if (!currentWalls.includes(wall))
+            continue;
+
+        Engine.DestroyEntity(wall);
+        ++collapsedWalls;
+    }
+
+    warn("Alesia collapsed " + collapsedWalls + " initial walls after breach.");
+    this.debugLog("Collapsed " + collapsedWalls + " Alesia walls after breach.");
+}
+
+Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data)                                                    /* Escalating defense */
+{
     /* Check if the lost entity is one of the initial walls */
     if (!this.alesia_escalatingDefense_walls.includes(data.entity))
         return;
@@ -1050,7 +1101,9 @@ Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data
             numDestroyedWalls += 1
     }
 
-    if ((this.alesia_escalatingDefense_lastNumDestroyedWalls != numDestroyedWalls) && (numDestroyedWalls <= 3))
+    if (!this.alesia_escalatingDefense_wallsCollapsed &&
+        (this.alesia_escalatingDefense_lastNumDestroyedWalls != numDestroyedWalls) &&
+        (numDestroyedWalls <= 3))
         Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
             "message": "Alarm! Alarm!",
             "translateMessage": false
@@ -1059,21 +1112,9 @@ Trigger.prototype.Alesia_OwnershipChange_DetectEscalatingDefense = function(data
     
     if (numDestroyedWalls < 2)
         return;
-    
-    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": "Stadtwache: Vercingetorix! Der Feind ist in die Stadt eingedrungen",
-        "translateMessage": false
-    });
 
-    Engine.QueryInterface(SYSTEM_ENTITY, IID_GuiInterface).PushNotification({
-        "message": "Vercingetorix: Bewaffnet jeden Mann und jede Frau!",
-        "translateMessage": false
-    });
-    
-    this.alesia_escalatingDefense_started = true;
-    
-    // Make an immediate spawning of a lot of city patrol groups. Will be later only filled up to lower numbers bc otherwise it is impossible
-    this.Alesia_SpawnCityPatrolGroups_raw(TriggerHelper.GetMinutes(), this.GetDifficulty() * 10);
+    this.Alesia_CollapseInitialWalls();
+    this.Alesia_StartEscalatingDefense(true);
 }
 
 Trigger.prototype.Alesia_OwnershipChange_DetectWin = function(data)
@@ -1106,6 +1147,8 @@ Trigger.prototype.Alesia_OwnershipChange_DetectWin = function(data)
 
 Trigger.prototype.Alesia_OwnershipChange_RebuildCity = function(data)
 {
+    if (!alesia_rebuildCityAfterDestruction)
+        return;
     
     if (-1 == this.alesia_attackerGroupSpawnPoints.indexOf(data.entity))
         return;

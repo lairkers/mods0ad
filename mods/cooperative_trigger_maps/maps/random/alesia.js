@@ -158,6 +158,9 @@ export function* generateMap(mapSettings)
 	const outerSiegePlayerRadius = fractionToTiles(0.44);
 	const outerSiegePlayerRadiusInner = fractionToTiles(0.4);
 	const playerTeamArcPerMember = Math.PI / 9;
+	const playerTeamArcPerMemberLargeTeam = Math.PI / 10;
+	const getPlayerTeamArcAngle = playerCount =>
+		playerCount < 3 ? playerCount * playerTeamArcPerMember : (playerCount + 1) * playerTeamArcPerMemberLargeTeam;
 	const playerLandProbeDistance = 10;
 	const stayCity = new StaticConstraint(stayClasses(clCity, 0));
 
@@ -397,7 +400,7 @@ export function* generateMap(mapSettings)
 		{
 			let teamID = teamOrder[i];
 			let teamPlayerIDs = teamPlayers[teamID];
-			let idealArcAngle = teamPlayerIDs.length * playerTeamArcPerMember;
+			let idealArcAngle = getPlayerTeamArcAngle(teamPlayerIDs.length);
 			let maxArcAngle = teamCount == 1 ? idealArcAngle : teamSlotAngle * 0.85;
 			let teamArcAngle = Math.min(idealArcAngle, maxArcAngle);
 			let slotCenterAngle = globalRotation + (i + 0.5) * teamSlotAngle;
