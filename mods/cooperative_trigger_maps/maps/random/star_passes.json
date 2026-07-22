@@ -1,0 +1,25 @@
+{
+	"settings": {
+		"Name": "Star Passes",
+		"Script": "star_passes.js",
+		"Description": "Players occupy only some of the mountain valleys and advance toward a fortified Iberian city. Capture the wonder at its heart to win.",
+		"Preview": "",
+		"Keywords": ["multiplayer", "trigger"],
+		"SupportedBiomes": "generic/",
+		"CircularMap": true,
+		"TriggerScripts": [
+			"scripts/TriggerHelper.js",
+			"random/star_passes_trigger_config.js",
+			"random/star_passes_triggers.js"
+		],
+		"SupportedTriggerDifficulties": {
+			"Values": [
+				"Very Easy",
+				"Easy",
+				"Medium",
+				"Hard",
+				"Very Hard"
+			]
+		}
+	}
+}
