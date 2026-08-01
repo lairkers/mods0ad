@@ -249,7 +249,7 @@ var alesia_attackerGroup_balancing = [
     {
         // This should be the most influential building
         "buildingClasses": ["Wonder"],
-        "unitCount": time => scaleByTime(time, 0, 85),
+        "unitCount": time => scaleByTime(time, -30, 85),
         "unitComposition": (time, heroes) => [
             {
                 "templates": alesia_templates.heroes,
@@ -350,7 +350,7 @@ var alesia_attackerGroup_balancing = [
     },
     {
         "buildingClasses": ["Stable"],
-        "unitCount": time => Math.min(30, scaleByTime(time, 0, 80)),
+        "unitCount": time => Math.min(30, scaleByTime(time, -10, 60)),
         "unitComposition": (time, heroes) => [
             {
                 "templates": alesia_templates.citizenSoldier_cavalry_melee,
@@ -727,8 +727,7 @@ Trigger.prototype.alesia_SpawnAndGarrisonAtEntity = function(playerID, entGarrTu
         return;
 
     let cmpSpace = cmpGarrisonHolder ? cmpGarrisonHolder.GetCapacity() : cmpTurretHolder.GetTurretPoints().length;
-    let numUnitsMax = Math.floor(cmpSpace * capacityPercent);
-    let numUnits = cmpGarrisonHolder ? numUnitsMax : randIntInclusive(0, numUnitsMax);
+    let numUnits = Math.floor(cmpSpace * capacityPercent);
     let templateCompositions = TriggerHelper.RandomTemplateComposition(templates, numUnits);
 
     if (cmpGarrisonHolder)

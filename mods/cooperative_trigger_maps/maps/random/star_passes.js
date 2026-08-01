@@ -59,7 +59,7 @@ export function* generateMap(mapSettings)
 
 	const mapCenter = g_Map.getCenter();
 	const numPlayers = getNumPlayers();
-	const segmentCount = Math.ceil(numPlayers * 1.5);
+	const segmentCount = 10;
 	const startAngle = randomAngle();
 
 	const clPlayer = g_Map.createTileClass();
@@ -264,23 +264,28 @@ export function* generateMap(mapSettings)
 
 	yield 55;
 
-	createBalancedMetalMines(
-		oMetalSmall,
-		oMetalLarge,
-		clMetal,
-		avoidClasses(clPlayer, 20, clMountain, 2, clPass, 3, clCenter, 4, clCity, 4, clForest, 1));
-	createBalancedStoneMines(
-		oStoneSmall,
-		oStoneLarge,
-		clRock,
-		avoidClasses(clPlayer, 20, clMountain, 2, clPass, 3, clCenter, 4, clCity, 4, clForest, 1, clMetal, 10));
+	// Two balanced passes double the normal amount of both mine types while
+	// preserving their per-player distribution.
+	for (let i = 0; i < 2; ++i)
+	{
+		createBalancedMetalMines(
+			oMetalSmall,
+			oMetalLarge,
+			clMetal,
+			avoidClasses(clPlayer, 20, clMountain, 2, clPass, 3, clCenter, 4, clCity, 4, clForest, 1));
+		createBalancedStoneMines(
+			oStoneSmall,
+			oStoneLarge,
+			clRock,
+			avoidClasses(clPlayer, 20, clMountain, 2, clPass, 3, clCenter, 4, clCity, 4, clForest, 1, clMetal, 10));
+	}
 
 	createFood(
 		[
 			[new SimpleObject(oMainHuntableAnimal, 5, 7, 0, 4)],
 			[new SimpleObject(oSecondaryHuntableAnimal, 2, 3, 0, 2)]
 		],
-		[3 * numPlayers, 3 * numPlayers],
+		[30 * numPlayers, 30 * numPlayers],
 		avoidClasses(clPlayer, 16, clMountain, 2, clPass, 2, clCity, 3, clForest, 1, clMetal, 4, clRock, 4, clFood, 18),
 		clFood);
 
@@ -294,7 +299,14 @@ export function* generateMap(mapSettings)
 
 	placePlayersNomad(
 		clPlayer,
-		avoidClasses(clMountain, 4, clForest, 1, clMetal, 4, clRock, 4, clFood, 2));
+		avoidClasses(
+			clCity, 10,
+			clWall, 12,
+			clMountain, 4,
+			clForest, 1,
+			clMetal, 4,
+			clRock, 4,
+			clFood, 2));
 
 	setSkySet("cirrus");
 	setFogFactor(0.15);
