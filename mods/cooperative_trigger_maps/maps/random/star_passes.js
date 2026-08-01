@@ -92,6 +92,8 @@ export function* generateMap(mapSettings)
 		"PlayerPlacement": [playerIDs, playerPosition],
 		"PlayerTileClass": clPlayer,
 		"BaseResourceClass": clBaseResource,
+		// Suppress the civilization default: Iberian players start without walls.
+		"Walls": false,
 		"CityPatch": {
 			"outerTerrain": tRoadWild,
 			"innerTerrain": tRoad
@@ -130,7 +132,7 @@ export function* generateMap(mapSettings)
 		const angle = startAngle + (i + 0.5) * 2 * Math.PI / segmentCount;
 		const start = Vector2D.add(
 			mapCenter,
-			new Vector2D(centerRadius - 1, 0).rotate(-angle));
+			new Vector2D(centerRadius + scaleByMapSize(2, 4), 0).rotate(-angle));
 		const end = Vector2D.add(
 			mapCenter,
 			new Vector2D(fractionToTiles(0.49), 0).rotate(-angle));
@@ -144,14 +146,19 @@ export function* generateMap(mapSettings)
 			]);
 	}
 
-	// Visually emphasize the star arms and guarantee a clear approach to mid.
-	for (let i = 0; i < playerPosition.length; ++i)
+	// Keep a central road strip clear in every sector, including unoccupied ones
+	// and Nomad games. This gives siege engines a reliable route to the city.
+	for (let i = 0; i < segmentCount; ++i)
 	{
+		const angle = startAngle + i * 2 * Math.PI / segmentCount;
+		const passStart = Vector2D.add(
+			mapCenter,
+			new Vector2D(fractionToTiles(0.46), 0).rotate(-angle));
 		const passEnd = Vector2D.add(
 			mapCenter,
-			new Vector2D(centerRadius + 2, 0).rotate(-playerAngle[i]));
+			new Vector2D(centerRadius + 2, 0).rotate(-angle));
 		createArea(
-			new PathPlacer(playerPosition[i], passEnd, scaleByMapSize(8, 14), 0.15, 0.2, 0.1, 0),
+			new PathPlacer(passStart, passEnd, scaleByMapSize(8, 14), 0.15, 0.2, 0.1, 0),
 			[
 				new LayeredPainter([tRoadWild, tRoad], [2]),
 				new SmoothElevationPainter(ELEVATION_SET, heightLand, 2),
@@ -180,7 +187,8 @@ export function* generateMap(mapSettings)
 	const wallEntities = placeCircularWall(
 		mapCenter,
 		cityRadius,
-		["tower", "medium", "tower", "gate", "tower", "medium"],
+		// Every second connection between towers is a gate.
+		["tower", "gate", "tower", "medium"],
 		"star_city",
 		0,
 		startAngle,
@@ -245,7 +253,8 @@ export function* generateMap(mapSettings)
 
 	createBumps(avoidClasses(clPlayer, 12, clMountain, 2, clPass, 2, clCenter, 2, clCity, 2));
 
-	const [forestTrees, stragglerTrees] = getTreeCounts(...rBiomeTreeCount(4.0));
+	// About 35% less woodland than before, while retaining biome proportions.
+	const [forestTrees, stragglerTrees] = getTreeCounts(...rBiomeTreeCount(2.6));
 	createDefaultForests(
 		[tMain, tForestFloor1, tForestFloor2,
 			tForestFloor1 + TERRAIN_SEPARATOR + oTree1,

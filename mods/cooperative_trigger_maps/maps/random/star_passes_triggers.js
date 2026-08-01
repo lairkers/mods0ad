@@ -30,6 +30,9 @@ var alesia_maxPopulation = 1200;
  */
 var alesia_civ = globalThis.alesia_civ || "gaul";
 
+// Iberians have no stone-thrower. Gaia can own and command foreign templates.
+var alesia_catapultTemplates = ["units/rome/siege_onager_unpacked"];
+
 var alesia_templateClasses = deepfreeze({
     "heroes": "Hero",
     "champions": "Champion",
@@ -382,7 +385,11 @@ var alesia_attackerGroup_balancing = [
         "unitComposition": (time, heroes) => [
             {
                 "templates": alesia_templates.siege_ram,
-                "frequency": 1
+                "frequency": 0.75
+            },
+            {
+                "templates": alesia_catapultTemplates,
+                "frequency": 0.25
             }
         ],
         "formations": [],
@@ -1046,6 +1053,7 @@ Trigger.prototype.Alesia_SpawnAttackerGroups = function(data)
                     });
             else
                 this.Alesia_SendEntitiesToRandomAttack(playerEntities, patrolPoints, ramEntities, false);
+
         }
 
         // Now also send all existing patroling groups towards players
