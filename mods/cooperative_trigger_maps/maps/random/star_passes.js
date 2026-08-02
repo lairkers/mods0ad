@@ -1,8 +1,8 @@
 /**
  * Radial map with one mountain-separated sector per player.
  *
- * Player IDs are deliberately shuffled instead of grouped by team. Each sector
- * has exactly one base and one route to the shared central plain.
+ * Player IDs are deliberately shuffled instead of grouped by team. Players
+ * occupy adjacent sectors, with exactly one base and one route per sector.
  */
 
 Engine.LoadLibrary("rmgen");
@@ -79,8 +79,9 @@ export function* generateMap(mapSettings)
 
 	const playerIDs = shuffleArray(sortAllPlayers());
 	const playerRadius = fractionToTiles(0.34);
-	const playerSegment = playerIDs.map((id, i) =>
-		Math.round(i * segmentCount / numPlayers) % segmentCount);
+	// Fill one contiguous block of sectors so players start next to each other.
+	// The randomized start angle rotates that block on every generated map.
+	const playerSegment = playerIDs.map((id, i) => i);
 	const playerAngle = playerSegment.map(segment =>
 		startAngle + segment * 2 * Math.PI / segmentCount);
 	const playerPosition = playerIDs.map((id, i) =>
@@ -207,7 +208,7 @@ export function* generateMap(mapSettings)
 			const angle = startAngle + angleOffset + i * 2 * Math.PI / count;
 			const position = Vector2D.add(mapCenter, new Vector2D(radius, 0).rotate(-angle));
 			g_Map.placeEntityPassable(
-				"uncapturable|" + templates[i % templates.length],
+				templates[i % templates.length],
 				0,
 				position,
 				-angle + Math.PI);
@@ -225,7 +226,8 @@ export function* generateMap(mapSettings)
 		cityRadius * 0.78,
 		0);
 
-	// The only capturable Gaia structure is the flag-equivalent victory target.
+	// The wonder is the flag-equivalent victory target; ordinary city buildings
+	// are capturable too, while the surrounding walls remain uncapturable.
 	g_Map.placeEntityPassable(oWonder, 0, mapCenter, startAngle);
 
 	// Alesia patrols use A points as a route through the city and B points as

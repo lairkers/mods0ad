@@ -29,6 +29,7 @@ var alesia_maxPopulation = 1200;
  * These are the templates spawned at the gamestart and during the game.
  */
 var alesia_civ = globalThis.alesia_civ || "gaul";
+var alesia_enableCityExpansion = globalThis.alesia_enableCityExpansion !== false;
 
 // Iberians have no stone-thrower. Gaia can own and command foreign templates.
 var alesia_catapultTemplates = ["units/rome/siege_onager_unpacked"];
@@ -217,13 +218,11 @@ var alesia_buildingGarrison = difficulty => [
         "buildingClasses": ["Arsenal"],
         "unitTemplates": alesia_templates.siege_ram,
         "capacityRatio": 1
-
     },
     {
         "buildingClasses": ["Stable"],
         "unitTemplates": [...alesia_templates.citizenSoldier_cavalry, ...alesia_templates.champion_cavalry],
         "capacityRatio": 1
-
     },
     {
         "buildingClasses": ["House"],
@@ -574,7 +573,8 @@ Trigger.prototype.Alesia_Init = function()
     this.Alesia_GarrisonBuildings();
     this.Alesia_StartAttackTimer(alesia_firstAttackTime(this.GetDifficulty(), isNomad));
     this.DoAfterDelay(alesia_firstCityPatrolTime(this.GetDifficulty(), isNomad) * 60 * 1000, "Alesia_SpawnCityPatrolGroups", {});
-    this.Alesia_StartCityExpansionTimer(alesia_firstCityExpansionTime(this.GetDifficulty()));
+    if (alesia_enableCityExpansion)
+        this.Alesia_StartCityExpansionTimer(alesia_firstCityExpansionTime(this.GetDifficulty()));
     
     this.Alesia_rebuildCity_unfinishedBuildings = [];
 };
@@ -768,6 +768,15 @@ Trigger.prototype.Alesia_GarrisonBuildings = function()
  */
 Trigger.prototype.Alesia_SpawnCityPatrolGroups = function()
 {
+    // Never spawn in a part of the city whose source building was destroyed or
+    // captured since the previous patrol cycle.
+    this.alesia_patrolGroupSpawnPoints = this.alesia_patrolGroupSpawnPoints.filter(ent =>
+    {
+        let cmpOwnership = Engine.QueryInterface(ent, IID_Ownership);
+        return TriggerHelper.IsInWorld(ent) &&
+            cmpOwnership && cmpOwnership.GetOwner() == alesia_playerID;
+    });
+
     if (!this.alesia_patrolGroupSpawnPoints.length)
         return;
 
@@ -777,7 +786,9 @@ Trigger.prototype.Alesia_SpawnCityPatrolGroups = function()
         targetGroupCount = targetGroupCount * (0.5 + this.GetDifficulty() / 3);
     let groupCount = Math.floor(Math.max(0, targetGroupCount) - this.alesia_patrolingUnits.length);
 
-    this.debugLog("Spawning " + groupCount + " city patrol groups, " + this.alesia_patrolingUnits.length + " exist");
+    this.debugLog("Spawning " + groupCount + " city patrol groups at " +
+        this.alesia_patrolGroupSpawnPoints.length + " remaining spawn points, " +
+        this.alesia_patrolingUnits.length + " groups exist");
 
     this.Alesia_SpawnCityPatrolGroups_raw(time, groupCount)
 
@@ -862,6 +873,15 @@ Trigger.prototype.Alesia_SpawnAttackerGroups = function(data)
 
     if (!this.alesia_attackerGroupSpawnPoints)
         return;
+
+    // Ownership changes normally remove destroyed or captured spawn buildings.
+    // Filter once more at wave time so stale entity IDs can never spawn units.
+    this.alesia_attackerGroupSpawnPoints = this.alesia_attackerGroupSpawnPoints.filter(ent =>
+    {
+        let cmpOwnership = Engine.QueryInterface(ent, IID_Ownership);
+        return TriggerHelper.IsInWorld(ent) &&
+            cmpOwnership && cmpOwnership.GetOwner() == alesia_playerID;
+    });
 
     let time = TriggerHelper.GetMinutes();
     if (data && data.skipAttack)
@@ -1116,6 +1136,9 @@ Trigger.prototype.Alesia_StartAttackTimer = function(delay, skipAttack)
 
 Trigger.prototype.Alesia_CityExpansion = function()
 {
+    if (!alesia_enableCityExpansion)
+        return;
+
     this.Alesia_StartCityExpansionTimer(alesia_cityExpansionInterval(this.GetDifficulty()));
 
     this.Alesia_OwnershipChange_RebuildCity_core();
@@ -1124,6 +1147,9 @@ Trigger.prototype.Alesia_CityExpansion = function()
 
 Trigger.prototype.Alesia_StartCityExpansionTimer = function(delay)
 {
+    if (!alesia_enableCityExpansion)
+        return;
+
     this.debugLog("Alesia_StartCityExpansionTimer")
     this.debugLog(delay)
     let nextCityExpansion = delay * 60 * 1000;
